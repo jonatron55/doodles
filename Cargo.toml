@@ -1,0 +1,22 @@
+[package]
+name = "doodles"
+authors = ["Jonathon Cobb <jocobb@microsoft.com>"]
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "conway"
+path = "src/conway/main.rs"
+
+[[bin]]
+name = "digirain"
+path = "src/digirain/main.rs"
+
+[[bin]]
+name = "maze"
+path = "src/maze/main.rs"
+
+[dependencies]
+clap = { version = "4.5.51", features = ["derive"] }
+crossterm = "0.29.0"
+rand = "0.9.2"

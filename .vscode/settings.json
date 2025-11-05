@@ -1,0 +1,25 @@
+{
+  "[json][markdown][xml][yaml]": {
+    "editor.indentSize": 2
+  },
+  "[plaintext]": {
+    "editor.formatOnSave": false,
+    "editor.indentSize": 1,
+    "files.insertFinalNewline": false,
+    "files.trimFinalNewlines": false,
+    "files.trimTrailingWhitespace": false
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.sort.json": "explicit"
+  },
+  "editor.formatOnSave": true,
+  "editor.indentSize": 4,
+  "editor.insertSpaces": true,
+  "editor.tabSize": 4,
+  "files.encoding": "utf8",
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true
+}

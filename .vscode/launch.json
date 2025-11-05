@@ -1,0 +1,14 @@
+{
+  "configurations": [
+    {
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "externalConsole": true,
+      "name": "Debug (cppvsdbg)",
+      "preLaunchTask": "Build (debug)",
+      "program": "${workspaceFolder}/target/debug/digirain.exe",
+      "request": "launch",
+      "type": "cppvsdbg"
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "tasks": [
+    {
+      "args": [],
+      "command": "build",
+      "group": {
+        "isDefault": true,
+        "kind": "build"
+      },
+      "label": "Build (debug)",
+      "problemMatcher": [
+        "$rustc"
+      ],
+      "type": "cargo"
+    },
+    {
+      "args": [
+        "--release"
+      ],
+      "command": "build",
+      "group": {
+        "kind": "build"
+      },
+      "label": "Build (release)",
+      "problemMatcher": [
+        "$rustc"
+      ],
+      "type": "cargo"
+    },
+    {
+      "args": [
+        "--release"
+      ],
+      "command": "run",
+      "group": {
+        "kind": "test"
+      },
+      "label": "Run",
+      "problemMatcher": [
+        "$rustc"
+      ],
+      "type": "cargo"
+    },
+    {
+      "args": [],
+      "command": "test",
+      "group": {
+        "isDefault": true,
+        "kind": "test"
+      },
+      "label": "Test",
+      "problemMatcher": [
+        "$rustc"
+      ],
+      "type": "cargo"
+    }
+  ],
+  "version": "2.0.0"
+}
