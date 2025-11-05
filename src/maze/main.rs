@@ -3,6 +3,8 @@ use std::io::{Result as IoResult, stdout};
 use clap::Parser;
 use doodles::common::CommonArgs;
 
+mod maze;
+
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about=None)]
 pub struct Args {

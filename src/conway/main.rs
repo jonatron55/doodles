@@ -1,11 +1,7 @@
-use std::{
-    fs::OpenOptions,
-    hash::RandomState,
-    io::{Result as IoResult, stdout},
-    path::PathBuf,
-};
+use std::{fs::OpenOptions, hash::RandomState, io::Result as IoResult, path::PathBuf};
 
 use clap::Parser;
+use crossterm::terminal;
 use doodles::common::{CommonArgs, WaitResult, cleanup_term, setup_term};
 use doodles::error;
 
@@ -43,25 +39,20 @@ struct Args {
 
     /// Path to the board file to render.
     ///
-    /// Board files should be plain text and must contain a board size
-    /// declaration on the first line in the format "width,height", followed by
-    /// rows of cells where white spaces represent dead cells and any other
-    /// alphanumeric character represents a living cell.
-    ///
-    /// If the number of rows or columns in the file does not match the declared
-    /// size, excess cells will be discarded or missing cells will be treated
-    /// empty.
+    /// Board files should be plain text and contain rows of cells where white
+    /// spaces represent dead cells and any other alphanumeric character
+    /// represents a living cell. If no path is provided, a random board will be
+    /// generated.
     #[arg()]
-    path: PathBuf,
-
-    /// Number of generations to simulate before rendering.
-    #[arg(short = 'n', long, default_value_t = 0)]
-    generations: usize,
+    path: Option<PathBuf>,
 
     /// Maximum number of generations to simulate (0 for no limit).
     ///
     /// Once this limit is reached, the board will reset to the initial state
     /// read from the file.
+    ///
+    /// If not specified, the simulation will continue until the board
+    /// converges to either a stable or oscillating state.
     #[arg(short = 'm', long, default_value_t = 0)]
     max: usize,
 }
@@ -69,49 +60,54 @@ struct Args {
 fn main() -> IoResult<()> {
     let args = Args::parse();
 
-    // Load the board from the specified file.
-    let file = OpenOptions::new().read(true).open(&args.path);
-    let file = match file {
-        Ok(file) => file,
-        Err(err) => {
-            error!("Could not open '{}': {err}", args.path.display());
-            return Err(err);
-        }
-    };
-
-    let initial_board = match Board::from_file(file) {
-        Ok(board) => board,
-        Err(err) => {
-            error!("Could not read board from '{}': {err}", args.path.display());
-            return Err(err);
-        }
-    };
-
-    // Prewarm the board by simulating the specified number of generations.
-    let mut board = initial_board.clone();
-    for _ in 0..args.generations {
-        board.next();
-    }
-
-    // Create a random state for rendering.
-    let random_state = RandomState::new();
-
     setup_term()?;
-    // Main simulation loop.
-    loop {
-        render(&board, &random_state)?;
 
-        if args.common.wait()? == WaitResult::Exit {
-            break;
-        }
+    // Outer loop
+    'outer: loop {
+        let (width, height) = terminal::size()?;
+        let mut board = Board::new(width as usize, height as usize);
 
-        board.next();
+        board = if let Some(path) = &args.path {
+            // Load the board from the specified file.
+            let file = OpenOptions::new().read(true).open(&path);
+            let file = match file {
+                Ok(file) => file,
+                Err(err) => {
+                    error!("Could not open '{}': {err}", path.display());
+                    return Err(err);
+                }
+            };
 
-        if args.max > 0 && board.generation() >= args.max {
-            board = initial_board.clone();
+            match board.with_cells_from_file(file) {
+                Ok(board) => board,
+                Err(err) => {
+                    error!("Could not read board from '{}': {err}", path.display());
+                    return Err(err);
+                }
+            }
+        } else {
+            let mut rand = rand::rng();
+            board.with_random_cells(&mut rand, 0.33)
+        };
+
+        // Create a random state for rendering.
+        let random_state = RandomState::new();
+
+        // Inner simulation loop
+        'sim: loop {
+            render(&board, &random_state)?;
+
+            if args.common.wait()? == WaitResult::Exit {
+                break 'outer;
+            }
+
+            board.next();
+
+            if board.converged() || args.max > 0 && board.generation() >= args.max {
+                break 'sim;
+            }
         }
     }
-
     cleanup_term()?;
 
     Ok(())

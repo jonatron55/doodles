@@ -1,6 +1,19 @@
-use std::io::{
-    BufRead, BufReader, Error as IoError, ErrorKind as IoErrorKind, Read, Result as IoResult,
+use std::{
+    hash::{DefaultHasher, Hasher},
+    io::{
+        BufRead, BufReader, Error as IoError, ErrorKind as IoErrorKind, Read, Result as IoResult,
+    },
 };
+
+use rand::{
+    Rng,
+    distr::{
+        Bernoulli, Distribution,
+        uniform::{UniformSampler, UniformUsize},
+    },
+};
+
+const HISTORY_LEN: usize = 16;
 
 /// Represents the state of a Conway's Game of Life board.
 ///
@@ -24,6 +37,7 @@ pub struct Board {
     height: usize,
     cell_buffers: [Vec<Cell>; 2],
     generation: usize,
+    history: [u64; HISTORY_LEN],
 }
 
 /// Maximum age a cell can reach before becoming empty.
@@ -56,7 +70,7 @@ pub struct Cell {
 
 impl Board {
     /// Creates a new empty board with the given dimensions.
-    pub fn _new(width: usize, height: usize) -> Self {
+    pub fn new(width: usize, height: usize) -> Self {
         Board {
             width,
             height,
@@ -65,21 +79,35 @@ impl Board {
                 vec![Cell::empty(); width * height],
             ],
             generation: 0,
+            history: [0; HISTORY_LEN],
         }
     }
 
-    /// Loads a board from the given reader.
+    pub fn with_random_cells<R: Rng>(mut self, rand: &mut R, density: f64) -> Self {
+        let spawn = Bernoulli::new(density).unwrap();
+        let colors = [rand.random_range(1..7), rand.random_range(1..7)];
+        let color_index = UniformUsize::new(0, 2).unwrap();
+
+        for cell in self.cell_buffers[0].iter_mut() {
+            if spawn.sample(rand) {
+                let color = colors[color_index.sample(rand)] as u32;
+                *cell = Cell::new(color);
+            }
+        }
+        self
+    }
+
+    /// Updates the board's cells by reading from the given file reader.
     ///
     /// The reader should provide a plain text representation of the board,
-    /// with the first line containing the dimensions in the format
-    /// `width,height` followed by rows of cells where white spaces represent
-    /// empty cells and any other alphanumeric character represents a living
-    /// cell. The color of a living cell is determined by converting the
-    /// character to a base-36 digit.
+    /// with rows of cells where white spaces represent  empty cells and any
+    /// other alphanumeric character represents a living cell. The color of a
+    /// living cell is determined by converting the character to a base-36
+    /// digit.
     ///
-    /// If the number of rows or columns in the input does not match the
-    /// declared size, excess cells will be discarded or missing cells will be
-    /// treated as empty.
+    /// If the number of rows or columns in the input does not match the board
+    /// size, excess cells will be discarded or missing cells will be treated as
+    /// empty.
     ///
     /// Arguments
     /// =========
@@ -91,41 +119,30 @@ impl Board {
     ///
     /// `Ok(Board)` if the board was successfully loaded, or a
     /// [`std::io::Error`] if any problems occurred during reading or parsing.
-    pub fn from_file<R: Read>(reader: R) -> IoResult<Self> {
+    pub fn with_cells_from_file<R: Read>(mut self, reader: R) -> IoResult<Self> {
         let mut reader = BufReader::new(reader);
         let mut line = String::new();
 
-        reader.read_line(&mut line)?;
-        let dims: Vec<_> = line.split(',').map(|s| s.trim().parse::<usize>()).collect();
-        if dims.len() != 2 || dims.iter().any(|r| r.is_err()) {
-            return Err(IoError::new(
-                IoErrorKind::InvalidData,
-                "Invalid board dimensions",
-            ));
-        }
-
-        let width = *dims[0].as_ref().unwrap();
-        let height = *dims[1].as_ref().unwrap();
-
-        let mut cells = Vec::with_capacity(width * height);
-        for _ in 0..height {
+        for y in 0..self.height {
             line.clear();
             if reader.read_line(&mut line)? == 0 {
-                for _ in 0..width {
-                    cells.push(Cell::empty());
+                for x in 0..self.width {
+                    self.cell_buffers[0][y + (x * self.width)] = Cell::empty();
                 }
                 continue;
             }
 
             let mut chars = line.chars();
-            for _ in 0..width {
+            for x in 0..self.width {
                 let ch = chars.next();
 
                 match ch {
-                    Some(ch) if ch.is_whitespace() => cells.push(Cell::empty()),
+                    Some(ch) if ch.is_whitespace() => {
+                        self.cell_buffers[0][y + (x * self.width)] = Cell::empty();
+                    }
                     Some(ch) if ch.is_alphanumeric() => {
                         let color = ch.to_digit(36).unwrap();
-                        cells.push(Cell::new(color));
+                        self.cell_buffers[0][y + (x * self.width)] = Cell::new(color);
                     }
                     Some(other) => {
                         return Err(IoError::new(
@@ -133,17 +150,15 @@ impl Board {
                             format!("Invalid character '{other}'"),
                         ));
                     }
-                    None => cells.push(Cell::empty()),
+                    None => self.cell_buffers[0][y + (x * self.width)] = Cell::empty(),
                 }
             }
         }
 
-        Ok(Board {
-            width,
-            height,
-            cell_buffers: [cells, vec![Cell::empty(); width * height]],
-            generation: 0,
-        })
+        self.generation = 0;
+        self.cell_buffers[1].fill(Cell::empty());
+
+        Ok(self)
     }
 
     /// Returns the dimensions of the board as (width, height).
@@ -168,9 +183,11 @@ impl Board {
     /// Advances the board to the next generation by one simulation step.
     pub fn next(&mut self) {
         let mut neighbors = Vec::with_capacity(8);
+        let mut board_hasher = DefaultHasher::new();
 
         for y in 0..self.height {
             for x in 0..self.width {
+                board_hasher.write_u8(if self.cell(x, y).is_alive() { 1 } else { 0 });
                 neighbors.clear();
 
                 for dy in -1..=1 {
@@ -193,7 +210,33 @@ impl Board {
             }
         }
 
+        self.history[self.generation % HISTORY_LEN] = board_hasher.finish();
         self.generation += 1;
+    }
+
+    /// Returns `true` if the board has converged to a stable or oscillating
+    /// state.
+    ///
+    /// A board is considered converged if it has repeated the same state
+    /// for the past [`HISTORY_LEN`] generations, or if it has alternated
+    /// between two states for the past [`HISTORY_LEN`] generations.
+    pub fn converged(&self) -> bool {
+        if self.generation < HISTORY_LEN {
+            return false;
+        }
+
+        let count0 = self
+            .history
+            .iter()
+            .filter(|&&h| h == self.history[0])
+            .count();
+        let count1 = self
+            .history
+            .iter()
+            .filter(|&&h| h == self.history[1])
+            .count();
+
+        count0 == HISTORY_LEN || (count0 == HISTORY_LEN / 2 && count1 == HISTORY_LEN / 2)
     }
 
     fn current_buffer(&self) -> &Vec<Cell> {

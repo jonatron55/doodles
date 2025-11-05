@@ -7,17 +7,9 @@ use crate::board::Board;
 use crossterm::{
     cursor::MoveTo,
     queue,
-    style::{Attributes, Color, ContentStyle, PrintStyledContent},
+    style::{ContentStyle, PrintStyledContent},
 };
 use doodles::common::{BOLD_STYLES, DIM_STYLES};
-
-/// Style used to render the border around the board.
-const BORDER_STYLE: ContentStyle = ContentStyle {
-    foreground_color: Some(Color::White),
-    background_color: None,
-    underline_color: None,
-    attributes: Attributes::none(),
-};
 
 /// Glyphs used to represent cells.
 ///
@@ -65,22 +57,17 @@ const CELL_GLYPHS: [[char; 12]; 8] = [
 /// problems occurred during terminal output.
 pub fn render(board: &Board, random_state: &RandomState) -> IoResult<()> {
     let (width, height) = board.size();
-
-    queue!(
-        stdout(),
-        MoveTo(0, 0),
-        PrintStyledContent(BORDER_STYLE.apply(format!("┌{}┐\n", "─".repeat(width))))
-    )?;
+    let mut stdout = stdout();
 
     for y in 0..height {
-        queue!(stdout(), PrintStyledContent(BORDER_STYLE.apply("│")))?;
+        queue!(stdout, MoveTo(0, y as u16),)?;
 
         for x in 0..width {
             let cell = board.cell(x, y);
 
             if cell.is_empty() {
                 queue!(
-                    stdout(),
+                    stdout,
                     PrintStyledContent(ContentStyle::default().apply(" "))
                 )?;
                 continue;
@@ -106,18 +93,11 @@ pub fn render(board: &Board, random_state: &RandomState) -> IoResult<()> {
 
             let glyph = CELL_GLYPHS[row][col];
 
-            queue!(stdout(), PrintStyledContent(style.apply(glyph)))?;
+            queue!(stdout, PrintStyledContent(style.apply(glyph)))?;
         }
-
-        queue!(stdout(), PrintStyledContent(BORDER_STYLE.apply("│\n")))?;
     }
 
-    queue!(
-        stdout(),
-        PrintStyledContent(BORDER_STYLE.apply(format!("└{0:─^1$}┘\n", board.generation(), width)))
-    )?;
-
-    stdout().flush()?;
+    stdout.flush()?;
 
     Ok(())
 }
