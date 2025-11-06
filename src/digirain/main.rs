@@ -12,7 +12,7 @@ use crossterm::{
 };
 
 use doodles::{
-    common::{CommonArgs, WaitResult, cleanup_term, setup_term, validate_color},
+    common::term::{CommonArgs, WaitResult, cleanup_term, setup_term, validate_color},
     error,
 };
 

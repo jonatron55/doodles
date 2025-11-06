@@ -1,7 +1,10 @@
 use std::io::{Result as IoResult, stdout};
 
 use clap::Parser;
-use doodles::common::CommonArgs;
+use crossterm::terminal;
+use doodles::common::term::{CommonArgs, WaitResult, cleanup_term, setup_term};
+
+use crate::maze::Maze;
 
 mod maze;
 
@@ -15,7 +18,45 @@ pub struct Args {
 fn main() -> IoResult<()> {
     let args = Args::parse();
 
-    let mut stdout = stdout();
+    setup_term()?;
+
+    'outer: loop {
+        let mut rand = rand::rng();
+        let (mut width, mut height) = terminal::size()?;
+        width /= 2;
+        width -= 1;
+
+        height /= 2;
+        height -= 1;
+
+        let mut maze = Maze::new(width as usize, height as usize);
+
+        'inner: loop {
+            if !maze.build_next(&mut rand) {
+                break 'inner;
+            }
+
+            maze.render()?;
+
+            match args.common.wait()? {
+                WaitResult::Continue => {}
+                WaitResult::Resize(_, _) => continue 'outer,
+                WaitResult::Exit => break 'outer,
+            }
+        }
+
+        for _ in 0..128 {
+            maze.render()?;
+
+            match args.common.wait()? {
+                WaitResult::Continue => {}
+                WaitResult::Resize(_, _) => continue 'outer,
+                WaitResult::Exit => break 'outer,
+            }
+        }
+    }
+
+    cleanup_term()?;
 
     Ok(())
 }

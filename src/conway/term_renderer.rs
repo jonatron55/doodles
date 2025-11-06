@@ -9,7 +9,7 @@ use crossterm::{
     queue,
     style::{ContentStyle, PrintStyledContent},
 };
-use doodles::common::{BOLD_STYLES, DIM_STYLES};
+use doodles::common::term::{BOLD_STYLES, DIM_STYLES};
 
 /// Glyphs used to represent cells.
 ///

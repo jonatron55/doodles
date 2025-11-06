@@ -2,7 +2,7 @@ use std::{fs::OpenOptions, hash::RandomState, io::Result as IoResult, path::Path
 
 use clap::Parser;
 use crossterm::terminal;
-use doodles::common::{CommonArgs, WaitResult, cleanup_term, setup_term};
+use doodles::common::term::{CommonArgs, WaitResult, cleanup_term, setup_term};
 use doodles::error;
 
 use crate::board::Board;
