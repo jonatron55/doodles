@@ -1,9 +1,19 @@
 use bitflags::bitflags;
-use rand::Rng;
+use rand::{Rng, seq::IteratorRandom};
+
+use crate::common::borders::*;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Direction {
+    North,
+    East,
+    South,
+    West,
+}
 
 bitflags! {
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    pub struct Direction: u8 {
+    pub struct Directions: u8 {
         const NORTH = 0b0001;
         const EAST  = 0b0010;
         const SOUTH = 0b0100;
@@ -11,191 +21,48 @@ bitflags! {
     }
 }
 
-pub enum BorderStyle {
-    Single,
-    Curved,
-    Bold,
-    Double,
-}
-
-const BORDERS_SINGLE: [char; 16] = [
-    ' ', // 0b0000 (NONE)
-    '╵', // 0b0001 (NORTH)
-    '╶', // 0b0010 (EAST)
-    '└', // 0b0011 (NORTH | EAST)
-    '╷', // 0b0100 (SOUTH)
-    '│', // 0b0101 (NORTH | SOUTH)
-    '┌', // 0b0110 (SOUTH | EAST)
-    '├', // 0b0111 (NORTH | EAST | SOUTH)
-    '╴', // 0b1000 (WEST)
-    '┘', // 0b1001 (NORTH | WEST)
-    '─', // 0b1010 (EAST | WEST)
-    '┴', // 0b1011 (NORTH | EAST | WEST)
-    '┐', // 0b1100 (SOUTH | WEST)
-    '┤', // 0b1101 (NORTH | SOUTH | WEST)
-    '┬', // 0b1110 (SOUTH | EAST | WEST)
-    '┼', // 0b1111 (NORTH | EAST | SOUTH | WEST)
-];
-
-const BORDERS_CURVED: [char; 16] = [
-    ' ', // 0b0000 (NONE)
-    '╵', // 0b0001 (NORTH)
-    '╶', // 0b0010 (EAST)
-    '╰', // 0b0011 (NORTH | EAST)
-    '╷', // 0b0100 (SOUTH)
-    '│', // 0b0101 (NORTH | SOUTH)
-    '╭', // 0b0110 (SOUTH | EAST)
-    '├', // 0b0111 (NORTH | EAST | SOUTH)
-    '╴', // 0b1000 (WEST)
-    '╯', // 0b1001 (NORTH | WEST)
-    '─', // 0b1010 (EAST | WEST)
-    '┴', // 0b1011 (NORTH | EAST | WEST)
-    '╮', // 0b1100 (SOUTH | WEST)
-    '┤', // 0b1101 (NORTH | SOUTH | WEST)
-    '┬', // 0b1110 (SOUTH | EAST | WEST)
-    '┼', // 0b1111 (NORTH | EAST | SOUTH | WEST)
-];
-
-const BORDERS_DOUBLE: [char; 16] = [
-    ' ', // 0b0000 (NONE)
-    '╨', // 0b0001 (NORTH)
-    '╞', // 0b0010 (EAST)
-    '╚', // 0b0011 (NORTH | EAST)
-    '╥', // 0b0100 (SOUTH)
-    '║', // 0b0101 (NORTH | SOUTH)
-    '╔', // 0b0110 (SOUTH | EAST)
-    '╠', // 0b0111 (NORTH | EAST | SOUTH)
-    '╡', // 0b1000 (WEST)
-    '╝', // 0b1001 (NORTH | WEST)
-    '═', // 0b1010 (EAST | WEST)
-    '╩', // 0b1011 (NORTH | EAST | WEST)
-    '╗', // 0b1100 (SOUTH | WEST)
-    '╣', // 0b1101 (NORTH | SOUTH | WEST)
-    '╦', // 0b1110 (SOUTH | EAST | WEST)
-    '╬', // 0b1111 (NORTH | EAST | SOUTH | WEST)
-];
-
-const BORDERS_DOUBLE_SINGLE: [char; 16] = [
-    ' ', // 0b0000 (NONE)
-    '╨', // 0b0001 (NORTH)
-    '╶', // 0b0010 (EAST)
-    '╙', // 0b0011 (NORTH | EAST)
-    '╥', // 0b0100 (SOUTH)
-    '║', // 0b0101 (NORTH | SOUTH)
-    '╓', // 0b0110 (SOUTH | EAST)
-    '╟', // 0b0111 (NORTH | EAST | SOUTH)
-    '╴', // 0b1000 (WEST)
-    '╜', // 0b1001 (NORTH | WEST)
-    '─', // 0b1010 (EAST | WEST)
-    '╨', // 0b1011 (NORTH | EAST | WEST)
-    '╖', // 0b1100 (SOUTH | WEST)
-    '╢', // 0b1101 (NORTH | SOUTH | WEST)
-    '╥', // 0b1110 (SOUTH | EAST | WEST)
-    '╫', // 0b1111 (NORTH | EAST | SOUTH | WEST)
-];
-
-const BORDERS_SINGLE_DOUBLE: [char; 16] = [
-    ' ', // 0b0000 (NONE)
-    '╵', // 0b0001 (NORTH)
-    '╞', // 0b0010 (EAST)
-    '╘', // 0b0011 (NORTH | EAST)
-    '╷', // 0b0100 (SOUTH)
-    '│', // 0b0101 (NORTH | SOUTH)
-    '╒', // 0b0110 (SOUTH | EAST)
-    '╞', // 0b0111 (NORTH | EAST | SOUTH)
-    '╡', // 0b1000 (WEST)
-    '╛', // 0b1001 (NORTH | WEST)
-    '═', // 0b1010 (EAST | WEST)
-    '╧', // 0b1011 (NORTH | EAST | WEST)
-    '╕', // 0b1100 (SOUTH | WEST)
-    '╡', // 0b1101 (NORTH | SOUTH | WEST)
-    '╤', // 0b1110 (SOUTH | EAST | WEST)
-    '╪', // 0b1111 (NORTH | EAST | SOUTH | WEST)
-];
-
-const BORDERS_BOLD: [char; 16] = [
-    ' ', // 0b0000 (NONE)
-    '╹', // 0b0001 (NORTH)
-    '╺', // 0b0010 (EAST)
-    '┗', // 0b0011 (NORTH | EAST)
-    '╻', // 0b0100 (SOUTH)
-    '┃', // 0b0101 (NORTH | SOUTH)
-    '┏', // 0b0110 (SOUTH | EAST)
-    '┣', // 0b0111 (NORTH | EAST | SOUTH)
-    '╸', // 0b1000 (WEST)
-    '┛', // 0b1001 (NORTH | WEST)
-    '━', // 0b1010 (EAST | WEST)
-    '┻', // 0b1011 (NORTH | EAST | WEST)
-    '┓', // 0b1100 (SOUTH | WEST)
-    '┫', // 0b1101 (NORTH | SOUTH | WEST)
-    '┳', // 0b1110 (SOUTH | EAST | WEST)
-    '╋', // 0b1111 (NORTH | EAST | SOUTH | WEST)
-];
-
-const BORDERS_BOLD_SINGLE: [char; 16] = [
-    ' ', // 0b0000 (NONE)
-    '╹', // 0b0001 (NORTH)
-    '╶', // 0b0010 (EAST)
-    '┖', // 0b0011 (NORTH | EAST)
-    '╻', // 0b0100 (SOUTH)
-    '┃', // 0b0101 (NORTH | SOUTH)
-    '┎', // 0b0110 (SOUTH | EAST)
-    '┠', // 0b0111 (NORTH | EAST | SOUTH)
-    '╴', // 0b1000 (WEST)
-    '┚', // 0b1001 (NORTH | WEST)
-    '─', // 0b1010 (EAST | WEST)
-    '┸', // 0b1011 (NORTH | EAST | WEST)
-    '┒', // 0b1100 (SOUTH | WEST)
-    '┨', // 0b1101 (NORTH | SOUTH | WEST)
-    '┰', // 0b1110 (SOUTH | EAST | WEST)
-    '╂', // 0b1111 (NORTH | EAST | SOUTH | WEST)
-];
-
-const BORDERS_SINGLE_BOLD: [char; 16] = [
-    ' ', // 0b0000 (NONE)
-    '╵', // 0b0001 (NORTH)
-    '╺', // 0b0010 (EAST)
-    '┕', // 0b0011 (NORTH | EAST)
-    '╷', // 0b0100 (SOUTH)
-    '│', // 0b0101 (NORTH | SOUTH)
-    '┍', // 0b0110 (SOUTH | EAST)
-    '┝', // 0b0111 (NORTH | EAST | SOUTH)
-    '╸', // 0b1000 (WEST)
-    '┙', // 0b1001 (NORTH | WEST)
-    '━', // 0b1010 (EAST | WEST)
-    '┷', // 0b1011 (NORTH | EAST | WEST)
-    '┑', // 0b1100 (SOUTH | WEST)
-    '┥', // 0b1101 (NORTH | SOUTH | WEST)
-    '┯', // 0b1110 (SOUTH | EAST | WEST)
-    '┿', // 0b1111 (NORTH | EAST | SOUTH | WEST)
-];
-
 impl Direction {
     pub fn choose<R: Rng>(rand: &mut R) -> Self {
         match rand.random_range(0..4) {
-            0 => Direction::NORTH,
-            1 => Direction::EAST,
-            2 => Direction::SOUTH,
-            3 => Direction::WEST,
+            0 => Direction::North,
+            1 => Direction::East,
+            2 => Direction::South,
+            3 => Direction::West,
             _ => unreachable!(),
         }
     }
 
     pub fn opposite(self) -> Direction {
-        let mut opposite = Direction::empty();
-        if self.contains(Direction::NORTH) {
-            opposite |= Direction::SOUTH;
+        match self {
+            Direction::North => Direction::South,
+            Direction::East => Direction::West,
+            Direction::South => Direction::North,
+            Direction::West => Direction::East,
         }
-        if self.contains(Direction::EAST) {
-            opposite |= Direction::WEST;
+    }
+
+    pub fn clockwise(self) -> Direction {
+        match self {
+            Direction::North => Direction::East,
+            Direction::East => Direction::South,
+            Direction::South => Direction::West,
+            Direction::West => Direction::North,
         }
-        if self.contains(Direction::SOUTH) {
-            opposite |= Direction::NORTH;
+    }
+
+    pub fn counterclockwise(self) -> Direction {
+        match self {
+            Direction::North => Direction::West,
+            Direction::East => Direction::North,
+            Direction::South => Direction::East,
+            Direction::West => Direction::South,
         }
-        if self.contains(Direction::WEST) {
-            opposite |= Direction::EAST;
-        }
-        opposite
+    }
+}
+
+impl Directions {
+    pub fn choose<R: Rng>(&self, rand: &mut R) -> Option<Direction> {
+        self.iter().choose(rand).and_then(|d| d.try_into().ok())
     }
 
     pub fn border(self, vertical_style: BorderStyle, horizontal_style: BorderStyle) -> char {
@@ -217,5 +84,30 @@ impl Direction {
             };
 
         borders[self.bits() as usize]
+    }
+}
+
+impl Into<Directions> for Direction {
+    fn into(self) -> Directions {
+        match self {
+            Direction::North => Directions::NORTH,
+            Direction::East => Directions::EAST,
+            Direction::South => Directions::SOUTH,
+            Direction::West => Directions::WEST,
+        }
+    }
+}
+
+impl TryInto<Direction> for Directions {
+    type Error = ();
+
+    fn try_into(self) -> Result<Direction, Self::Error> {
+        match self {
+            Directions::NORTH => Ok(Direction::North),
+            Directions::EAST => Ok(Direction::East),
+            Directions::SOUTH => Ok(Direction::South),
+            Directions::WEST => Ok(Direction::West),
+            _ => Err(()),
+        }
     }
 }

@@ -11,10 +11,13 @@ use crossterm::{
     style::{Print, PrintStyledContent},
 };
 use doodles::common::{
-    dir::{BorderStyle, Direction},
-    term::{BOLD_STYLES, DIM_STYLES, STYLES},
+    borders::BorderStyle,
+    dir::Directions,
+    term::{DIM_STYLES, STYLES},
 };
 use rand::{Rng, seq::SliceRandom};
+
+use crate::agent::Agent;
 
 pub struct Maze {
     width: usize,
@@ -24,10 +27,34 @@ pub struct Maze {
     open: Vec<OpenCell>,
 }
 
+#[derive(Clone, Debug)]
+pub struct RenderStyle {
+    pub outer: WallStyle,
+    pub inner: WallStyle,
+    pub color: u8,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WallStyle {
+    Solid,
+    Curved,
+    Double,
+    Bold,
+    Block,
+    Hedge,
+}
+
 struct OpenCell {
     cell: (usize, usize),
     from: (usize, usize),
 }
+
+const HEDGE_CHARS: [char; 69] = [
+    '⡞', '⡟', '⡧', '⡪', '⡯', '⡱', '⡳', '⡵', '⡵', '⡷', '⡸', '⡹', '⡺', '⡻', '⡼', '⡽', '⡾', '⡿', '⢏',
+    '⢕', '⢗', '⢜', '⢝', '⢞', '⢟', '⢣', '⢧', '⢪', '⢫', '⢮', '⢯', '⢲', '⢷', '⢹', '⢺', '⢻', '⢼', '⢽',
+    '⢾', '⢿', '⣎', '⣏', '⣕', '⣗', '⣜', '⣝', '⣞', '⣟', '⣣', '⣧', '⣪', '⣫', '⣭', '⣮', '⣯', '⣱', '⣳',
+    '⣵', '⣷', '⣸', '⣹', '⣺', '⣻', '⣼', '⣽', '⣾', '⣿', '⢳', '⢵',
+];
 
 bitflags! {
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -55,23 +82,23 @@ impl Maze {
         }
     }
 
-    pub fn walls(&self, x: usize, y: usize) -> Direction {
+    pub fn walls(&self, x: usize, y: usize) -> Directions {
         let cell = self.cells[self.cell_index(x, y)];
-        let mut walls = Direction::empty();
+        let mut walls = Directions::empty();
 
         if cell.contains(Cell::WALL_EAST) {
-            walls |= Direction::EAST;
+            walls |= Directions::EAST;
         }
         if cell.contains(Cell::WALL_SOUTH) {
-            walls |= Direction::SOUTH;
+            walls |= Directions::SOUTH;
         }
 
         if x == 0 || self.cells[self.cell_index(x - 1, y)].contains(Cell::WALL_EAST) {
-            walls |= Direction::WEST;
+            walls |= Directions::WEST;
         }
 
         if y == 0 || self.cells[self.cell_index(x, y - 1)].contains(Cell::WALL_SOUTH) {
-            walls |= Direction::NORTH;
+            walls |= Directions::NORTH;
         }
 
         walls
@@ -79,10 +106,10 @@ impl Maze {
 
     pub fn build_next<R: Rng>(&mut self, rand: &mut R) -> bool {
         let mut dirs = [
-            Direction::NORTH,
-            Direction::EAST,
-            Direction::SOUTH,
-            Direction::WEST,
+            Directions::NORTH,
+            Directions::EAST,
+            Directions::SOUTH,
+            Directions::WEST,
         ];
 
         let Some(OpenCell {
@@ -113,10 +140,10 @@ impl Maze {
 
         for &dir in &dirs {
             let (nx, ny) = match dir {
-                Direction::NORTH if y > 0 => (x, y - 1),
-                Direction::EAST if x + 1 < self.width => (x + 1, y),
-                Direction::SOUTH if y + 1 < self.height => (x, y + 1),
-                Direction::WEST if x > 0 => (x - 1, y),
+                Directions::NORTH if y > 0 => (x, y - 1),
+                Directions::EAST if x + 1 < self.width => (x + 1, y),
+                Directions::SOUTH if y + 1 < self.height => (x, y + 1),
+                Directions::WEST if x > 0 => (x - 1, y),
                 _ => continue,
             };
 
@@ -135,7 +162,7 @@ impl Maze {
         true
     }
 
-    pub fn render(&self) -> IoResult<()> {
+    pub fn render(&self, style: &RenderStyle, agents: &[Agent]) -> IoResult<()> {
         let mut stdout = stdout();
         self.render_bitmap();
         let bmp = self.bitmap.borrow();
@@ -147,61 +174,104 @@ impl Maze {
             for x in 0..bmp_width {
                 let idx = y * bmp_width + x;
 
-                if !bmp[idx] {
-                    // let cell_x = x / 2;
-                    // let cell_y = y / 2;
-                    // if cell_x < self.width && cell_y < self.height && x % 2 == 1 && y % 2 == 1 {
-                    //     if !self.open.is_empty()
-                    //         && self.open[self.open.len() - 1].cell == (cell_x, cell_y)
-                    //     {
-                    //         queue!(stdout, PrintStyledContent(BOLD_STYLES[7].apply('•')))?;
-                    //     } else if self.open.iter().any(|o| o.cell == (cell_x, cell_y)) {
-                    //         queue!(stdout, PrintStyledContent(DIM_STYLES[7].apply('•')))?;
-                    //     } else {
-                    //         queue!(stdout, Print(' '))?;
-                    //     }
-                    // } else {
-                    queue!(stdout, Print(' '))?;
-                    // }
-
+                if let Some(agent) = agents.iter().find(|a| a.position() == (x, y)) {
+                    agent.render()?;
                     continue;
                 }
 
-                let mut dirs = Direction::empty();
+                if !bmp[idx] {
+                    let (cell_x, cell_y) = ((x - 1) / 2, (y - 1) / 2);
+                    if (x - 1) % 2 == 0
+                        && (y - 1) % 2 == 0
+                        && cell_x < self.width
+                        && cell_y < self.height
+                    {
+                        let cell = self.cells[self.cell_index(cell_x, cell_y)];
+                        if !cell.contains(Cell::VISITED) {
+                            let style = &DIM_STYLES[style.color as usize];
+                            queue!(stdout, PrintStyledContent(style.apply('∎')))?;
+                            continue;
+                        }
+                    }
+
+                    queue!(stdout, Print(' '))?;
+                    continue;
+                }
+
+                let mut dirs = Directions::empty();
 
                 if y > 0 && bmp[(y - 1) * bmp_width + x] {
-                    dirs |= Direction::NORTH;
+                    dirs |= Directions::NORTH;
                 }
                 if y + 1 < bmp_height && bmp[(y + 1) * bmp_width + x] {
-                    dirs |= Direction::SOUTH;
+                    dirs |= Directions::SOUTH;
                 }
                 if x > 0 && bmp[y * bmp_width + (x - 1)] {
-                    dirs |= Direction::WEST;
+                    dirs |= Directions::WEST;
                 }
                 if x + 1 < bmp_width && bmp[y * bmp_width + (x + 1)] {
-                    dirs |= Direction::EAST;
+                    dirs |= Directions::EAST;
                 }
 
-                let horz_style = if x == 0 || x + 1 == bmp_width {
-                    BorderStyle::Bold
-                } else {
-                    BorderStyle::Curved
-                };
+                let x_border = x == 0 || x + 1 == bmp_width;
+                let y_border = y == 0 || y + 1 == bmp_height;
 
-                let vert_style = if y == 0 || y + 1 == bmp_height {
-                    BorderStyle::Bold
+                if style.outer == WallStyle::Block && (x_border || y_border) {
+                    queue!(
+                        stdout,
+                        PrintStyledContent(STYLES[style.color as usize].apply('█'))
+                    )?;
+                } else if style.outer == WallStyle::Hedge && (x_border || y_border) {
+                    queue!(
+                        stdout,
+                        PrintStyledContent(STYLES[style.color as usize].apply('⣿'))
+                    )?;
+                } else if style.inner == WallStyle::Block && !(x_border || y_border) {
+                    queue!(
+                        stdout,
+                        PrintStyledContent(STYLES[style.color as usize].apply('█'))
+                    )?;
+                } else if style.inner == WallStyle::Hedge && !(x_border || y_border) {
+                    queue!(
+                        stdout,
+                        PrintStyledContent(STYLES[style.color as usize].apply('⣿'))
+                    )?;
                 } else {
-                    BorderStyle::Curved
-                };
+                    let horizontal_style = if x_border { style.outer } else { style.inner };
+                    let vertical_style = if y_border { style.outer } else { style.inner };
 
-                queue!(
-                    stdout,
-                    PrintStyledContent(STYLES[7].apply(dirs.border(horz_style, vert_style)))
-                )?;
+                    let horizontal_style = match horizontal_style {
+                        WallStyle::Solid => BorderStyle::Single,
+                        WallStyle::Curved => BorderStyle::Curved,
+                        WallStyle::Double => BorderStyle::Double,
+                        WallStyle::Bold => BorderStyle::Bold,
+                        WallStyle::Block | WallStyle::Hedge => unreachable!(),
+                    };
+
+                    let vertical_style = match vertical_style {
+                        WallStyle::Solid => BorderStyle::Single,
+                        WallStyle::Curved => BorderStyle::Curved,
+                        WallStyle::Double => BorderStyle::Double,
+                        WallStyle::Bold => BorderStyle::Bold,
+                        WallStyle::Block | WallStyle::Hedge => unreachable!(),
+                    };
+
+                    queue!(
+                        stdout,
+                        PrintStyledContent(
+                            STYLES[style.color as usize]
+                                .apply(dirs.border(horizontal_style, vertical_style))
+                        )
+                    )?;
+                }
             }
         }
 
         stdout.flush()
+    }
+
+    pub fn size(&self) -> (usize, usize) {
+        (self.width, self.height)
     }
 
     fn render_bitmap(&self) {
@@ -273,5 +343,15 @@ impl Maze {
 impl Default for Cell {
     fn default() -> Self {
         Cell::WALL_EAST | Cell::WALL_SOUTH
+    }
+}
+
+impl RenderStyle {
+    pub fn with_color(self, color: u8) -> Self {
+        RenderStyle {
+            outer: self.outer,
+            inner: self.inner,
+            color,
+        }
     }
 }

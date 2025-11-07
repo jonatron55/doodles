@@ -1,0 +1,158 @@
+pub enum BorderStyle {
+    Single,
+    Curved,
+    Bold,
+    Double,
+}
+
+pub const BORDERS_SINGLE: [char; 16] = [
+    ' ', // 0b0000 (NONE)
+    '╵', // 0b0001 (NORTH)
+    '╶', // 0b0010 (EAST)
+    '└', // 0b0011 (NORTH | EAST)
+    '╷', // 0b0100 (SOUTH)
+    '│', // 0b0101 (NORTH | SOUTH)
+    '┌', // 0b0110 (SOUTH | EAST)
+    '├', // 0b0111 (NORTH | EAST | SOUTH)
+    '╴', // 0b1000 (WEST)
+    '┘', // 0b1001 (NORTH | WEST)
+    '─', // 0b1010 (EAST | WEST)
+    '┴', // 0b1011 (NORTH | EAST | WEST)
+    '┐', // 0b1100 (SOUTH | WEST)
+    '┤', // 0b1101 (NORTH | SOUTH | WEST)
+    '┬', // 0b1110 (SOUTH | EAST | WEST)
+    '┼', // 0b1111 (NORTH | EAST | SOUTH | WEST)
+];
+
+pub const BORDERS_CURVED: [char; 16] = [
+    ' ', // 0b0000 (NONE)
+    '╵', // 0b0001 (NORTH)
+    '╶', // 0b0010 (EAST)
+    '╰', // 0b0011 (NORTH | EAST)
+    '╷', // 0b0100 (SOUTH)
+    '│', // 0b0101 (NORTH | SOUTH)
+    '╭', // 0b0110 (SOUTH | EAST)
+    '├', // 0b0111 (NORTH | EAST | SOUTH)
+    '╴', // 0b1000 (WEST)
+    '╯', // 0b1001 (NORTH | WEST)
+    '─', // 0b1010 (EAST | WEST)
+    '┴', // 0b1011 (NORTH | EAST | WEST)
+    '╮', // 0b1100 (SOUTH | WEST)
+    '┤', // 0b1101 (NORTH | SOUTH | WEST)
+    '┬', // 0b1110 (SOUTH | EAST | WEST)
+    '┼', // 0b1111 (NORTH | EAST | SOUTH | WEST)
+];
+
+pub const BORDERS_DOUBLE: [char; 16] = [
+    ' ', // 0b0000 (NONE)
+    '╨', // 0b0001 (NORTH)
+    '╞', // 0b0010 (EAST)
+    '╚', // 0b0011 (NORTH | EAST)
+    '╥', // 0b0100 (SOUTH)
+    '║', // 0b0101 (NORTH | SOUTH)
+    '╔', // 0b0110 (SOUTH | EAST)
+    '╠', // 0b0111 (NORTH | EAST | SOUTH)
+    '╡', // 0b1000 (WEST)
+    '╝', // 0b1001 (NORTH | WEST)
+    '═', // 0b1010 (EAST | WEST)
+    '╩', // 0b1011 (NORTH | EAST | WEST)
+    '╗', // 0b1100 (SOUTH | WEST)
+    '╣', // 0b1101 (NORTH | SOUTH | WEST)
+    '╦', // 0b1110 (SOUTH | EAST | WEST)
+    '╬', // 0b1111 (NORTH | EAST | SOUTH | WEST)
+];
+
+pub const BORDERS_DOUBLE_SINGLE: [char; 16] = [
+    ' ', // 0b0000 (NONE)
+    '╨', // 0b0001 (NORTH)
+    '╶', // 0b0010 (EAST)
+    '╙', // 0b0011 (NORTH | EAST)
+    '╥', // 0b0100 (SOUTH)
+    '║', // 0b0101 (NORTH | SOUTH)
+    '╓', // 0b0110 (SOUTH | EAST)
+    '╟', // 0b0111 (NORTH | EAST | SOUTH)
+    '╴', // 0b1000 (WEST)
+    '╜', // 0b1001 (NORTH | WEST)
+    '─', // 0b1010 (EAST | WEST)
+    '╨', // 0b1011 (NORTH | EAST | WEST)
+    '╖', // 0b1100 (SOUTH | WEST)
+    '╢', // 0b1101 (NORTH | SOUTH | WEST)
+    '╥', // 0b1110 (SOUTH | EAST | WEST)
+    '╫', // 0b1111 (NORTH | EAST | SOUTH | WEST)
+];
+
+pub const BORDERS_SINGLE_DOUBLE: [char; 16] = [
+    ' ', // 0b0000 (NONE)
+    '╵', // 0b0001 (NORTH)
+    '╞', // 0b0010 (EAST)
+    '╘', // 0b0011 (NORTH | EAST)
+    '╷', // 0b0100 (SOUTH)
+    '│', // 0b0101 (NORTH | SOUTH)
+    '╒', // 0b0110 (SOUTH | EAST)
+    '╞', // 0b0111 (NORTH | EAST | SOUTH)
+    '╡', // 0b1000 (WEST)
+    '╛', // 0b1001 (NORTH | WEST)
+    '═', // 0b1010 (EAST | WEST)
+    '╧', // 0b1011 (NORTH | EAST | WEST)
+    '╕', // 0b1100 (SOUTH | WEST)
+    '╡', // 0b1101 (NORTH | SOUTH | WEST)
+    '╤', // 0b1110 (SOUTH | EAST | WEST)
+    '╪', // 0b1111 (NORTH | EAST | SOUTH | WEST)
+];
+
+pub const BORDERS_BOLD: [char; 16] = [
+    ' ', // 0b0000 (NONE)
+    '╹', // 0b0001 (NORTH)
+    '╺', // 0b0010 (EAST)
+    '┗', // 0b0011 (NORTH | EAST)
+    '╻', // 0b0100 (SOUTH)
+    '┃', // 0b0101 (NORTH | SOUTH)
+    '┏', // 0b0110 (SOUTH | EAST)
+    '┣', // 0b0111 (NORTH | EAST | SOUTH)
+    '╸', // 0b1000 (WEST)
+    '┛', // 0b1001 (NORTH | WEST)
+    '━', // 0b1010 (EAST | WEST)
+    '┻', // 0b1011 (NORTH | EAST | WEST)
+    '┓', // 0b1100 (SOUTH | WEST)
+    '┫', // 0b1101 (NORTH | SOUTH | WEST)
+    '┳', // 0b1110 (SOUTH | EAST | WEST)
+    '╋', // 0b1111 (NORTH | EAST | SOUTH | WEST)
+];
+
+pub const BORDERS_BOLD_SINGLE: [char; 16] = [
+    ' ', // 0b0000 (NONE)
+    '╹', // 0b0001 (NORTH)
+    '╶', // 0b0010 (EAST)
+    '┖', // 0b0011 (NORTH | EAST)
+    '╻', // 0b0100 (SOUTH)
+    '┃', // 0b0101 (NORTH | SOUTH)
+    '┎', // 0b0110 (SOUTH | EAST)
+    '┠', // 0b0111 (NORTH | EAST | SOUTH)
+    '╴', // 0b1000 (WEST)
+    '┚', // 0b1001 (NORTH | WEST)
+    '─', // 0b1010 (EAST | WEST)
+    '┸', // 0b1011 (NORTH | EAST | WEST)
+    '┒', // 0b1100 (SOUTH | WEST)
+    '┨', // 0b1101 (NORTH | SOUTH | WEST)
+    '┰', // 0b1110 (SOUTH | EAST | WEST)
+    '╂', // 0b1111 (NORTH | EAST | SOUTH | WEST)
+];
+
+pub const BORDERS_SINGLE_BOLD: [char; 16] = [
+    ' ', // 0b0000 (NONE)
+    '╵', // 0b0001 (NORTH)
+    '╺', // 0b0010 (EAST)
+    '┕', // 0b0011 (NORTH | EAST)
+    '╷', // 0b0100 (SOUTH)
+    '│', // 0b0101 (NORTH | SOUTH)
+    '┍', // 0b0110 (SOUTH | EAST)
+    '┝', // 0b0111 (NORTH | EAST | SOUTH)
+    '╸', // 0b1000 (WEST)
+    '┙', // 0b1001 (NORTH | WEST)
+    '━', // 0b1010 (EAST | WEST)
+    '┷', // 0b1011 (NORTH | EAST | WEST)
+    '┑', // 0b1100 (SOUTH | WEST)
+    '┥', // 0b1101 (NORTH | SOUTH | WEST)
+    '┯', // 0b1110 (SOUTH | EAST | WEST)
+    '┿', // 0b1111 (NORTH | EAST | SOUTH | WEST)
+];
