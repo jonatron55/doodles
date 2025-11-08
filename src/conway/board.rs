@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Jonathon Burnham Cobb
+// Licensed under the MIT-0 license.
+
 use std::{
     hash::{DefaultHasher, Hasher},
     io::{
@@ -18,18 +21,18 @@ const HISTORY_LEN: usize = 16;
 /// Represents the state of a Conway's Game of Life board.
 ///
 /// In addition to the usual rules of Conway's Game of Life, this implementation
-/// includes colored cells, which modify the rules as follows:
+/// includes coloured cells, which modify the rules as follows:
 ///
-/// 1. Any live cell with fewer than two live neighbours **of the same color**
+/// 1. Any live cell with fewer than two live neighbours **of the same colour**
 ///    dies, as if by underpopulation.
-/// 2. Any live cell with two or three live neighbours **of the same color**
+/// 2. Any live cell with two or three live neighbours **of the same colour**
 ///    survives.
-/// 3. Any live cell with more than three live neighbours **of any color** dies,
+/// 3. Any live cell with more than three live neighbours **of any colour** dies,
 ///    as if by overpopulation.
-/// 4. Any dead cell with exactly three live neighbours **of the same color**
+/// 4. Any dead cell with exactly three live neighbours **of the same colour**
 ///    becomes a live cell, as if by reproduction.
 ///
-/// The "color" values are arbitrary numbers; it is up to renderers to decide
+/// The "colour" values are arbitrary numbers; it is up to renderers to decide
 /// how to display them.
 #[derive(Clone)]
 pub struct Board {

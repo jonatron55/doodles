@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Jonathon Burnham Cobb
+// Licensed under the MIT-0 license.
+
 use std::hash::RandomState;
 use std::io::{Result as IoResult, stdout};
 

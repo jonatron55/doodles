@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Jonathon Burnham Cobb
+// Licensed under the MIT-0 license.
+
 use bitflags::bitflags;
 use rand::{Rng, seq::IteratorRandom};
 

@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Jonathon Burnham Cobb
+// Licensed under the MIT-0 license.
+
 use std::{fs::OpenOptions, hash::RandomState, io::Result as IoResult, path::PathBuf};
 
 use clap::Parser;

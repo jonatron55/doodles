@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Jonathon Burnham Cobb
+// Licensed under the MIT-0 license.
+
 use std::{
     hash::{BuildHasher, Hash, Hasher, RandomState},
     io::{Result as IoResult, Write as _, stdout},
@@ -30,9 +33,9 @@ const CELL_GLYPHS: [[char; 12]; 8] = [
 
 /// Renders the given board to the terminal.
 ///
-/// A border is drawn around the board, and each cell is rendered using colored
-/// glyphs that indicate different ages. These glyphs are selected randomly from
-/// a predefined set to add visual variety.
+/// Each cell is rendered using colored glyphs that indicate different ages.
+/// These glyphs are selected randomly from a predefined set to add visual
+/// variety.
 ///
 /// Although the simulation supports an arbitrary number of colors, only six
 /// distinct terminal colors are available. Colors will repeat if more than six
