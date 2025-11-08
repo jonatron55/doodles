@@ -1,5 +1,6 @@
 use std::{
     cell::RefCell,
+    hash::{BuildHasher, Hash, Hasher, RandomState},
     io::{Result as IoResult, Write, stdout},
 };
 
@@ -17,7 +18,7 @@ use doodles::common::{
 };
 use rand::{Rng, seq::SliceRandom};
 
-use crate::agent::Agent;
+use crate::agent::{Agent, RenderStyle as AgentRenderStyle};
 
 pub struct Maze {
     width: usize,
@@ -49,11 +50,10 @@ struct OpenCell {
     from: (usize, usize),
 }
 
-const HEDGE_CHARS: [char; 69] = [
-    '⡞', '⡟', '⡧', '⡪', '⡯', '⡱', '⡳', '⡵', '⡵', '⡷', '⡸', '⡹', '⡺', '⡻', '⡼', '⡽', '⡾', '⡿', '⢏',
-    '⢕', '⢗', '⢜', '⢝', '⢞', '⢟', '⢣', '⢧', '⢪', '⢫', '⢮', '⢯', '⢲', '⢷', '⢹', '⢺', '⢻', '⢼', '⢽',
-    '⢾', '⢿', '⣎', '⣏', '⣕', '⣗', '⣜', '⣝', '⣞', '⣟', '⣣', '⣧', '⣪', '⣫', '⣭', '⣮', '⣯', '⣱', '⣳',
-    '⣵', '⣷', '⣸', '⣹', '⣺', '⣻', '⣼', '⣽', '⣾', '⣿', '⢳', '⢵',
+const HEDGE_CHARS: [char; 51] = [
+    '⡟', '⡪', '⡯', '⡳', '⡵', '⡵', '⡷', '⡹', '⡺', '⡻', '⡼', '⡽', '⡾', '⡿', '⢏', '⢕', '⢗', '⢜', '⢝',
+    '⢞', '⢟', '⢮', '⢯', '⢷', '⢻', '⢽', '⢾', '⢿', '⣎', '⣏', '⣕', '⣗', '⣝', '⣞', '⣟', '⣣', '⣧', '⣪',
+    '⣫', '⣮', '⣯', '⣳', '⣵', '⣷', '⣹', '⣺', '⣻', '⣼', '⣽', '⣾', '⣿',
 ];
 
 bitflags! {
@@ -162,7 +162,13 @@ impl Maze {
         true
     }
 
-    pub fn render(&self, style: &RenderStyle, agents: &[Agent]) -> IoResult<()> {
+    pub fn render(
+        &self,
+        style: &RenderStyle,
+        agents: &[Agent],
+        agent_style: &AgentRenderStyle,
+        random_state: &RandomState,
+    ) -> IoResult<()> {
         let mut stdout = stdout();
         self.render_bitmap();
         let bmp = self.bitmap.borrow();
@@ -174,8 +180,8 @@ impl Maze {
             for x in 0..bmp_width {
                 let idx = y * bmp_width + x;
 
-                if let Some(agent) = agents.iter().find(|a| a.position() == (x, y)) {
-                    agent.render()?;
+                if let Some(agent) = agents.iter().find(|a| a.render_position() == (x, y)) {
+                    agent.render(agent_style)?;
                     continue;
                 }
 
@@ -216,26 +222,35 @@ impl Maze {
                 let x_border = x == 0 || x + 1 == bmp_width;
                 let y_border = y == 0 || y + 1 == bmp_height;
 
+                let mut print_hedge = |x: usize, y: usize| -> IoResult<()> {
+                    let hash = {
+                        let mut hasher = random_state.build_hasher();
+                        x.hash(&mut hasher);
+                        y.hash(&mut hasher);
+                        hasher.finish()
+                    };
+                    let ch = (hash as usize) % HEDGE_CHARS.len();
+
+                    queue!(
+                        stdout,
+                        PrintStyledContent(STYLES[style.color as usize].apply(HEDGE_CHARS[ch]))
+                    )
+                };
+
                 if style.outer == WallStyle::Block && (x_border || y_border) {
                     queue!(
                         stdout,
                         PrintStyledContent(STYLES[style.color as usize].apply('█'))
                     )?;
                 } else if style.outer == WallStyle::Hedge && (x_border || y_border) {
-                    queue!(
-                        stdout,
-                        PrintStyledContent(STYLES[style.color as usize].apply('⣿'))
-                    )?;
+                    print_hedge(x, y)?;
                 } else if style.inner == WallStyle::Block && !(x_border || y_border) {
                     queue!(
                         stdout,
                         PrintStyledContent(STYLES[style.color as usize].apply('█'))
                     )?;
                 } else if style.inner == WallStyle::Hedge && !(x_border || y_border) {
-                    queue!(
-                        stdout,
-                        PrintStyledContent(STYLES[style.color as usize].apply('⣿'))
-                    )?;
+                    print_hedge(x, y)?;
                 } else {
                     let horizontal_style = if x_border { style.outer } else { style.inner };
                     let vertical_style = if y_border { style.outer } else { style.inner };
@@ -282,8 +297,6 @@ impl Maze {
         let (bmp_width, bmp_height) = self.bitmap_size();
         let mut bitmap = BitVec::repeat(false, bmp_width * bmp_height);
 
-        bitmap.set(bmp_width, false); // Entrance
-
         for y in 0..self.height {
             for x in 0..self.width {
                 let cell = self.cells[self.cell_index(x, y)];
@@ -316,6 +329,8 @@ impl Maze {
                 }
             }
         }
+
+        bitmap.set(bmp_width, false); // Entrance
 
         self.bitmap.replace(Some(bitmap));
     }

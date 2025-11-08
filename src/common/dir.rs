@@ -58,6 +58,16 @@ impl Direction {
             Direction::West => Direction::South,
         }
     }
+
+    pub fn move_position(&self, position: (usize, usize)) -> (usize, usize) {
+        let (x, y) = position;
+        match self {
+            Direction::North => (x, y - 1),
+            Direction::East => (x + 1, y),
+            Direction::South => (x, y + 1),
+            Direction::West => (x - 1, y),
+        }
+    }
 }
 
 impl Directions {
