@@ -5,6 +5,10 @@ version = "0.1.0"
 edition = "2024"
 
 [[bin]]
+name = "bubble"
+path = "src/bubble/main.rs"
+
+[[bin]]
 name = "conway"
 path = "src/conway/main.rs"
 

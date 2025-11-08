@@ -9,10 +9,10 @@ use doodles::common::term::{CommonArgs, WaitResult, cleanup_term, setup_term};
 use doodles::error;
 
 use crate::board::Board;
-use crate::term_renderer::render;
+use crate::renderer::render;
 
 mod board;
-mod term_renderer;
+mod renderer;
 
 /// Conway's Game of Life simulator and renderer.
 ///
