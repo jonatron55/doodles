@@ -65,8 +65,16 @@ fn main() -> IoResult<()> {
 
     setup_term()?;
 
+    let mut iteration = 0;
+
     // Outer loop
     'outer: loop {
+        if let Some(max_iterations) = args.common.iter
+            && iteration >= max_iterations
+        {
+            break 'outer;
+        }
+
         let (width, height) = terminal::size()?;
         let mut board = Board::new(width as usize, height as usize);
 
@@ -110,7 +118,10 @@ fn main() -> IoResult<()> {
                 break 'sim;
             }
         }
+
+        iteration += 1;
     }
+
     cleanup_term()?;
 
     Ok(())

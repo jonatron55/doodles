@@ -189,9 +189,9 @@ impl Maze {
                 }
 
                 if !bmp[idx] {
-                    let (cell_x, cell_y) = ((x - 1) / 2, (y - 1) / 2);
-                    if (x - 1) % 2 == 0
-                        && (y - 1) % 2 == 0
+                    let (cell_x, cell_y) = ((x.wrapping_sub(1)) / 2, (y.wrapping_sub(1)) / 2);
+                    if (x.wrapping_sub(1)) % 2 == 0
+                        && (y.wrapping_sub(1)) % 2 == 0
                         && cell_x < self.width
                         && cell_y < self.height
                     {

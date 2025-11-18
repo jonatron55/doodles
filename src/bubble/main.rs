@@ -45,7 +45,20 @@ fn main() -> IoResult<()> {
 
     setup_term()?;
 
+    match args.common.wait()? {
+        WaitResult::Exit => return cleanup_term(),
+        _ => {}
+    }
+
+    let mut iteration = 0;
+
     'outer: loop {
+        if let Some(max_iterations) = args.common.iter
+            && iteration >= max_iterations
+        {
+            break 'outer;
+        }
+
         let (width, height) = terminal::size()?;
         let (width, height) = (width as usize, height as usize);
 
@@ -119,6 +132,8 @@ fn main() -> IoResult<()> {
                 WaitResult::Exit => break 'outer,
             }
         }
+
+        iteration += 1;
     }
 
     cleanup_term()

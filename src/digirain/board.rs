@@ -76,7 +76,7 @@ impl Board {
         new_board
     }
 
-    pub fn next<R: Rng>(mut self, args: &Args, rand: &mut R) -> Self {
+    pub fn next<R: Rng>(mut self, args: &Args, rand: &mut R, dead: bool) -> Option<Self> {
         self.buffers.1.fill(Cell::default());
 
         let spawn = Bernoulli::new(args.spawnprob).unwrap();
@@ -108,21 +108,25 @@ impl Board {
 
                     cell.age += 1;
                     self.buffers.1[index] = cell;
-                } else if !self.buffers.1[index].is_alive(args) && spawn.sample(rand) {
+                } else if !dead && !self.buffers.1[index].is_alive(args) && spawn.sample(rand) {
                     self.buffers.1[index] = Cell::new_head(*self.alphabet.choose(rand).unwrap(), 1);
                 }
             }
         }
 
-        Self {
-            width: self.width,
-            height: self.height,
-            buffers: (self.buffers.1, self.buffers.0),
-            alphabet: self.alphabet,
+        if self.buffers.1.iter().any(|cell| cell.is_alive(args)) {
+            Some(Self {
+                width: self.width,
+                height: self.height,
+                buffers: (self.buffers.1, self.buffers.0),
+                alphabet: self.alphabet,
+            })
+        } else {
+            None
         }
     }
 
-    pub fn render(&self, args: &Args) -> IoResult<()> {
+    pub fn render(&self, args: &Args, color: usize) -> IoResult<()> {
         let mut stdout = stdout();
 
         for y in 0..self.height {
@@ -132,9 +136,9 @@ impl Board {
                 let cell = &self.buffers.0[self.cell_index(x, y)];
                 if cell.is_alive(args) {
                     let style = if cell.age == 0 {
-                        BOLD_STYLES[args.color]
+                        BOLD_STYLES[color]
                     } else {
-                        DIM_STYLES[args.color]
+                        DIM_STYLES[color]
                     };
 
                     queue!(stdout, PrintStyledContent(style.apply(cell.content)))?;

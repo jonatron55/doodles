@@ -2,7 +2,8 @@
 // Licensed under the MIT-0 license.
 
 use std::{
-    io::{Result as IoResult, stderr, stdout},
+    io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, stderr, stdout},
+    process::exit,
     time::Duration,
 };
 
@@ -20,6 +21,12 @@ use crossterm::{
 
 #[derive(Parser, Debug)]
 pub struct CommonArgs {
+    /// Number of iterations to run.
+    ///
+    /// If absent, the program will run indefinitely until interrupted.
+    #[arg(short = 'n', long)]
+    pub iter: Option<usize>,
+
     /// Wait for keypress between frames.
     ///
     /// If set, the board will render one frame at a time and wait for the user
@@ -37,17 +44,10 @@ pub struct CommonArgs {
     #[arg(
         short = 'w',
         long,
-        default_value_t = 60,
+        default_value_t = 32,
         conflicts_with = "interactive"
     )]
     wait: u64,
-}
-
-pub fn validate_color(s: &str) -> Result<usize, String> {
-    match s.parse::<usize>() {
-        Ok(n) if n <= 7 => Ok(n),
-        _ => Err(String::from("must be an integer between 0 and 7.")),
-    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -233,7 +233,20 @@ pub fn setup_term() -> IoResult<()> {
         Hide,
         DisableLineWrap,
         Clear(ClearType::All)
-    )
+    )?;
+
+    ctrlc::set_handler(move || {
+        cleanup_term().unwrap();
+        exit(1);
+    })
+    .map_err(|err| {
+        IoError::new(
+            IoErrorKind::Other,
+            format!("Failed to set Ctrl-C handler: {}", err),
+        )
+    })?;
+
+    Ok(())
 }
 
 pub fn cleanup_term() -> IoResult<()> {
@@ -304,6 +317,7 @@ impl CommonArgs {
             match event {
                 Event::Key(ev)
                     if ev.is_press()
+                        && !ev.is_repeat()
                         && (!self.interactive
                             || ev.code == KeyCode::Esc
                             || ev.code == KeyCode::Char('q')) =>

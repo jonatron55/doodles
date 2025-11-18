@@ -1,8 +1,10 @@
 // Copyright (c) 2025 Jonathon Burnham Cobb
 // Licensed under the MIT-0 license.
 
-use std::hash::RandomState;
-use std::io::{Result as IoResult, stdout};
+use std::{
+    hash::RandomState,
+    io::{Result as IoResult, stdout},
+};
 
 use clap::Parser;
 use crossterm::{
@@ -39,7 +41,7 @@ pub struct Args {
     agent_style: Option<usize>,
 
     /// Number of agents.
-    #[clap(short = 'n', long, default_value_t = 4)]
+    #[clap(short = 'N', long, default_value_t = 6)]
     agents: usize,
 }
 
@@ -87,10 +89,23 @@ fn main() -> IoResult<()> {
 
     setup_term()?;
 
+    match args.common.wait()? {
+        WaitResult::Exit => return cleanup_term(),
+        _ => {}
+    }
+
+    let mut iteration = 0;
+    let mut rand = rand::rng();
+
     'outer: loop {
+        if let Some(max_iterations) = args.common.iter
+            && iteration >= max_iterations
+        {
+            break 'outer;
+        }
+
         execute!(stdout(), Clear(ClearType::All))?;
 
-        let mut rand = rand::rng();
         let (mut width, mut height) = terminal::size()?;
         let random_state = RandomState::new();
 
@@ -164,6 +179,8 @@ fn main() -> IoResult<()> {
                 WaitResult::Exit => break 'outer,
             }
         }
+
+        iteration += 1;
     }
 
     cleanup_term()?;

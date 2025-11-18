@@ -15,7 +15,7 @@ use crossterm::{
 };
 
 use doodles::{
-    common::term::{CommonArgs, WaitResult, cleanup_term, setup_term, validate_color},
+    common::term::{CommonArgs, WaitResult, cleanup_term, setup_term},
     error,
 };
 
@@ -34,6 +34,7 @@ enum ColorChoice {
 mod board;
 
 use board::Board;
+use rand::Rng;
 
 /// Digital rain terminal animation.
 #[derive(Parser, Debug)]
@@ -63,8 +64,8 @@ pub struct Args {
     spawnprob: f64,
 
     /// Color of the rain (0-7).
-    #[arg(short = 'c', long, default_value_t = 2, value_parser = validate_color)]
-    color: usize,
+    #[arg(short = 'c', long)]
+    color: Option<usize>,
 }
 
 fn main() -> IoResult<()> {
@@ -73,6 +74,13 @@ fn main() -> IoResult<()> {
     let mut stdout = stdout();
 
     setup_term()?;
+
+    match args.common.wait()? {
+        WaitResult::Exit => return cleanup_term(),
+        _ => {}
+    }
+
+    let mut frame = 0;
 
     let (width, height) = terminal::size()?;
     let mut rand = rand::rng();
@@ -88,10 +96,24 @@ fn main() -> IoResult<()> {
     };
 
     let mut board = Board::new(width as usize, height as usize, alphabet.as_deref());
+    let color = args.color.unwrap_or_else(|| rand.random_range(1..8)) % 8;
 
     loop {
-        board = board.next(&args, &mut rand);
-        board.render(&args)?;
+        let dead = if let Some(max_iterations) = args.common.iter {
+            frame >= max_iterations
+        } else {
+            false
+        };
+
+        frame += 1;
+
+        board = if let Some(next_board) = board.next(&args, &mut rand, dead) {
+            next_board
+        } else {
+            break;
+        };
+
+        board.render(&args, color)?;
 
         match args.common.wait()? {
             WaitResult::Resize(width, height) => {
