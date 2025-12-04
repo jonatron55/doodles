@@ -10,7 +10,7 @@ struct Doodle {
 
 const DOODLES: [Doodle; 4] = [
     Doodle {
-        name: "bubble",
+        name: "sorty",
         args: &["--wait=0", "--iter=1"],
     },
     Doodle {

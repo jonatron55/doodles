@@ -3,16 +3,22 @@
 
 use std::{cmp::Ordering, io::Result as IoResult};
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use crossterm::terminal;
 use doodles::common::term::{CommonArgs, WaitResult, cleanup_term, setup_term};
 use rand::{Rng, random_bool, seq::SliceRandom};
 
-use crate::renderer::RenderStyle;
+use crate::{
+    bubble::{BubbleState, step_bubble},
+    qsort::{QsortState, step_qsort},
+    renderer::RenderStyle,
+};
 
+mod bubble;
+mod qsort;
 mod renderer;
 
-/// Bubble sort animation.
+/// sorty sort animation.
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about=None)]
 pub struct Args {
@@ -36,8 +42,23 @@ pub struct Args {
     descending: bool,
 
     /// Sort in ascending order.
-    #[arg(short = 'a', long, conflicts_with = "descending")]
+    #[arg(short = 'u', long, conflicts_with = "descending")]
     ascending: bool,
+
+    /// Sorting algorithm.
+    #[arg(short = 'a', long, default_value = "qsort")]
+    algo: Algorithm,
+}
+
+#[derive(ValueEnum, Clone, Debug)]
+enum Algorithm {
+    Bubble,
+    Qsort,
+}
+
+enum SortState {
+    Bubble(BubbleState),
+    QSort(QsortState),
 }
 
 fn main() -> IoResult<()> {
@@ -95,41 +116,23 @@ fn main() -> IoResult<()> {
 
         actual.shuffle(&mut rand);
 
-        let mut sorted = false;
-        let mut direction = false;
+        let mut sort_state = match args.algo {
+            Algorithm::Bubble => SortState::Bubble(BubbleState::new()),
+            Algorithm::Qsort => SortState::QSort(QsortState::new(&actual)),
+        };
 
-        while !sorted {
-            direction = !direction;
-            sorted = true;
-            for i in 0..(width - 1) {
-                while !renderer::render(&mut displayed, &actual, width, height, colors, style)? {
-                    match args.common.wait()? {
-                        WaitResult::Continue => {}
-                        WaitResult::Resize(_, _) => continue 'outer,
-                        WaitResult::Exit => break 'outer,
-                    }
+        while !match &mut sort_state {
+            SortState::Bubble(state) => step_bubble(&mut actual, width, ordering, state),
+            SortState::QSort(state) => step_qsort(&mut actual, ordering, state),
+        } {
+            while displayed != actual {
+                renderer::render(&mut displayed, &actual, width, height, colors, style)?;
+
+                match args.common.wait()? {
+                    WaitResult::Continue => {}
+                    WaitResult::Resize(_, _) => continue 'outer,
+                    WaitResult::Exit => break 'outer,
                 }
-
-                let i = if direction { i } else { width - 2 - i };
-
-                let a = actual[i];
-                let b = actual[i + 1];
-
-                if a.cmp(&b) == ordering {
-                    actual[i] = b;
-                    actual[i + 1] = a;
-                    sorted = false;
-                }
-            }
-        }
-
-        for _ in 0..32 {
-            renderer::render(&mut displayed, &actual, width, height, colors, style)?;
-
-            match args.common.wait()? {
-                WaitResult::Continue => {}
-                WaitResult::Resize(_, _) => continue 'outer,
-                WaitResult::Exit => break 'outer,
             }
         }
 

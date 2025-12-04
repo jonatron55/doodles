@@ -3,10 +3,10 @@ Miscellaneous Rusty Doodles
 
 This repository implements several small terminal-based graphical programs in Rust.
 
-`bubble`
+`sorty`
 --------
 
-A bubble sort animation with customizable colors and rendering styles.
+A collection of sort animations with customizable colors and rendering styles.
 
 `conway`
 --------
