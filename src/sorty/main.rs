@@ -18,7 +18,7 @@ mod bubble;
 mod qsort;
 mod renderer;
 
-/// sorty sort animation.
+/// Visualizes different sorting algorithms.
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about=None)]
 pub struct Args {
@@ -71,6 +71,14 @@ fn main() -> IoResult<()> {
         _ => {}
     }
 
+    let (width, height) = terminal::size()?;
+    let (width, height) = (width as usize, height as usize);
+
+    let mut rand = rand::rng();
+
+    let mut actual: Vec<usize> = (0..width).map(|x| 8 * x * height / width).collect();
+    let mut displayed: Vec<usize> = vec![0; width];
+
     let mut iteration = 0;
 
     'outer: loop {
@@ -79,14 +87,6 @@ fn main() -> IoResult<()> {
         {
             break 'outer;
         }
-
-        let (width, height) = terminal::size()?;
-        let (width, height) = (width as usize, height as usize);
-
-        let mut rand = rand::rng();
-
-        let mut actual: Vec<usize> = (0..width).map(|x| 8 * x * height / width).collect();
-        let mut displayed: Vec<usize> = vec![0; width];
 
         let ordering = if args.ascending {
             Ordering::Greater
@@ -106,8 +106,8 @@ fn main() -> IoResult<()> {
         let style = match args.style.unwrap_or_else(|| rand.random_range(0..4)) % 4 {
             0 => RenderStyle::Block,
             1 => match ordering {
-                Ordering::Greater => RenderStyle::DotsAsc,
-                _ => RenderStyle::DotsDesc,
+                Ordering::Greater => RenderStyle::DotsDesc,
+                _ => RenderStyle::DotsAsc,
             },
             2 => RenderStyle::Fraction,
             3 => RenderStyle::Octal,
@@ -130,7 +130,12 @@ fn main() -> IoResult<()> {
 
                 match args.common.wait()? {
                     WaitResult::Continue => {}
-                    WaitResult::Resize(_, _) => continue 'outer,
+                    WaitResult::Resize(width, height) => {
+                        let (width, height) = (width as usize, height as usize);
+                        actual = (0..width).map(|x| 8 * x * height / width).collect();
+                        displayed = vec![0; width];
+                        continue 'outer;
+                    }
                     WaitResult::Exit => break 'outer,
                 }
             }
