@@ -7,7 +7,7 @@ use std::{
     path::PathBuf,
 };
 
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use crossterm::{
     cursor::MoveTo,
     execute,
@@ -15,26 +15,16 @@ use crossterm::{
 };
 
 use doodles::{
-    common::term::{CommonArgs, WaitResult, cleanup_term, setup_term},
+    common::{
+        color::Color,
+        term::{CommonArgs, WaitResult, cleanup_term, setup_term},
+    },
     error,
 };
-
-#[derive(Clone, Copy, Debug, ValueEnum)]
-enum ColorChoice {
-    Black,
-    Red,
-    Green,
-    Yellow,
-    Blue,
-    Magenta,
-    Cyan,
-    White,
-}
 
 mod board;
 
 use board::Board;
-use rand::Rng;
 
 /// Digital rain terminal animation.
 #[derive(Parser, Debug)]
@@ -63,9 +53,9 @@ pub struct Args {
     #[arg(short = 'p', long, default_value_t = 0.005)]
     spawnprob: f64,
 
-    /// Color of the rain (0-7).
+    /// Color of the rain.
     #[arg(short = 'c', long)]
-    color: Option<usize>,
+    color: Option<Color>,
 }
 
 fn main() -> IoResult<()> {
@@ -96,7 +86,7 @@ fn main() -> IoResult<()> {
     };
 
     let mut board = Board::new(width as usize, height as usize, alphabet.as_deref());
-    let color = args.color.unwrap_or_else(|| rand.random_range(1..8)) % 8;
+    let color = args.color.unwrap_or_else(|| Color::choose(&mut rand));
 
     loop {
         let dead = if let Some(max_iterations) = args.common.iter {

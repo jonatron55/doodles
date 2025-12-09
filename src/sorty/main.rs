@@ -5,7 +5,10 @@ use std::{cmp::Ordering, io::Result as IoResult};
 
 use clap::{Parser, ValueEnum};
 use crossterm::terminal;
-use doodles::common::term::{CommonArgs, WaitResult, cleanup_term, setup_term};
+use doodles::common::{
+    color::Color,
+    term::{CommonArgs, WaitResult, cleanup_term, setup_term},
+};
 use rand::{Rng, random_bool, seq::SliceRandom};
 
 use crate::{
@@ -29,13 +32,13 @@ pub struct Args {
     #[arg(short = 's', long)]
     style: Option<usize>,
 
-    /// Inactive color (0-7).
+    /// Inactive color.
     #[arg(short = 'c', long)]
-    color1: Option<u8>,
+    color1: Option<Color>,
 
     /// Active color (0-7).
     #[arg(short = 'C', long)]
-    color2: Option<u8>,
+    color2: Option<Color>,
 
     /// Sort in descending order.
     #[arg(short = 'd', long)]
@@ -99,8 +102,8 @@ fn main() -> IoResult<()> {
         };
 
         let colors = [
-            args.color1.unwrap_or_else(|| rand.random_range(0..8) as u8) % 8,
-            args.color2.unwrap_or_else(|| rand.random_range(1..8) as u8) % 8,
+            args.color1.unwrap_or_else(|| Color::choose(&mut rand)),
+            args.color2.unwrap_or_else(|| Color::choose(&mut rand)),
         ];
 
         let style = match args.style.unwrap_or_else(|| rand.random_range(0..4)) % 4 {

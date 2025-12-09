@@ -2,5 +2,6 @@
 // Licensed under the MIT-0 license.
 
 pub mod borders;
+pub mod color;
 pub mod dir;
 pub mod term;

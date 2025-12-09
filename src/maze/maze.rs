@@ -16,6 +16,7 @@ use crossterm::{
 };
 use doodles::common::{
     borders::BorderStyle,
+    color::Color,
     dir::Directions,
     term::{DIM_STYLES, STYLES},
 };
@@ -35,7 +36,7 @@ pub struct Maze {
 pub struct RenderStyle {
     pub outer: WallStyle,
     pub inner: WallStyle,
-    pub color: u8,
+    pub color: Color,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -365,7 +366,7 @@ impl Default for Cell {
 }
 
 impl RenderStyle {
-    pub fn with_color(self, color: u8) -> Self {
+    pub fn with_color(self, color: Color) -> Self {
         RenderStyle {
             outer: self.outer,
             inner: self.inner,

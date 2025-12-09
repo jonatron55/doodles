@@ -8,7 +8,10 @@ use crossterm::{
     queue,
     style::{ContentStyle, PrintStyledContent},
 };
-use doodles::common::term::{BOLD_STYLES, DIM_STYLES};
+use doodles::common::{
+    color::Color,
+    term::{BOLD_STYLES, DIM_STYLES},
+};
 use rand::{
     Rng,
     distr::{Bernoulli, Distribution},
@@ -126,7 +129,7 @@ impl Board {
         }
     }
 
-    pub fn render(&self, args: &Args, color: usize) -> IoResult<()> {
+    pub fn render(&self, args: &Args, color: Color) -> IoResult<()> {
         let mut stdout = stdout();
 
         for y in 0..self.height {
@@ -136,9 +139,9 @@ impl Board {
                 let cell = &self.buffers.0[self.cell_index(x, y)];
                 if cell.is_alive(args) {
                     let style = if cell.age == 0 {
-                        BOLD_STYLES[color]
+                        BOLD_STYLES[color as usize]
                     } else {
-                        DIM_STYLES[color]
+                        DIM_STYLES[color as usize]
                     };
 
                     queue!(stdout, PrintStyledContent(style.apply(cell.content)))?;

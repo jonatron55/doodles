@@ -1,0 +1,157 @@
+// Copyright (c) 2025 Jonathon Burnham Cobb
+// Licensed under the MIT-0 license.
+
+use std::str::FromStr;
+
+use clap::{ValueEnum, builder::PossibleValue};
+use crossterm::style::{Color as TermColor, ContentStyle};
+use rand::Rng;
+
+use crate::common::term::{BOLD_STYLES, DIM_STYLES, STYLES};
+
+/// A primary terminal color.
+///
+/// Can be parsed as a command line argument and is convertible to a [`crossterm::style::Color`].
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(u8)]
+pub enum Color {
+    Black = 0,
+    Red = 1,
+    Green = 2,
+    Yellow = 3,
+    Blue = 4,
+    Magenta = 5,
+    Cyan = 6,
+    White = 7,
+}
+
+impl Color {
+    /// Choose a random color.
+    pub fn choose<R: Rng>(rand: &mut R) -> Self {
+        let value = rand.random_range(0..8);
+        Color::from(value)
+    }
+
+    /// Returns the corresponding [`ContentStyle`] from [`STYLES`].
+    pub fn style(&self) -> ContentStyle {
+        STYLES[*self as usize]
+    }
+
+    /// Returns the corresponding bold [`ContentStyle`] from [`BOLD_STYLES`].
+    pub fn bold_style(&self) -> ContentStyle {
+        BOLD_STYLES[*self as usize]
+    }
+
+    /// Returns the corresponding dim [`ContentStyle`] from [`DIM_STYLES`].
+    pub fn dim_style(&self) -> ContentStyle {
+        DIM_STYLES[*self as usize]
+    }
+
+    /// Returns the corresponding dark [`crossterm::style::Color`].
+    pub fn to_dark_term_color(&self) -> TermColor {
+        match self {
+            Color::Black => TermColor::Black,
+            Color::Red => TermColor::DarkRed,
+            Color::Green => TermColor::DarkGreen,
+            Color::Yellow => TermColor::DarkYellow,
+            Color::Blue => TermColor::DarkBlue,
+            Color::Magenta => TermColor::DarkMagenta,
+            Color::Cyan => TermColor::DarkCyan,
+            Color::White => TermColor::Grey,
+        }
+    }
+
+    /// Returns the corresponding bright [`crossterm::style::Color`].
+    pub fn to_term_color(&self) -> TermColor {
+        match self {
+            Color::Black => TermColor::DarkGrey,
+            Color::Red => TermColor::Red,
+            Color::Green => TermColor::Green,
+            Color::Yellow => TermColor::Yellow,
+            Color::Blue => TermColor::Blue,
+            Color::Magenta => TermColor::Magenta,
+            Color::Cyan => TermColor::Cyan,
+            Color::White => TermColor::White,
+        }
+    }
+}
+
+impl FromStr for Color {
+    type Err = ();
+
+    /// Parses a color from either its name/abbreviation or its numeric value (0-7).
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Ok(value) = s.parse::<u8>() {
+            Ok(Color::from(value))
+        } else {
+            let s = s.to_uppercase();
+            match s.as_str() {
+                "K" | "BLACK" => Ok(Color::Black),
+                "R" | "RED" => Ok(Color::Red),
+                "G" | "GREEN" => Ok(Color::Green),
+                "Y" | "YELLOW" => Ok(Color::Yellow),
+                "B" | "BLUE" => Ok(Color::Blue),
+                "M" | "MAGENTA" => Ok(Color::Magenta),
+                "C" | "CYAN" => Ok(Color::Cyan),
+                "W" | "WHITE" => Ok(Color::White),
+                _ => Err(()),
+            }
+        }
+    }
+}
+
+impl Into<u8> for Color {
+    fn into(self) -> u8 {
+        self as u8
+    }
+}
+
+impl From<u8> for Color {
+    fn from(value: u8) -> Self {
+        match value % 8 {
+            0 => Color::Black,
+            1 => Color::Red,
+            2 => Color::Green,
+            3 => Color::Yellow,
+            4 => Color::Blue,
+            5 => Color::Magenta,
+            6 => Color::Cyan,
+            7 => Color::White,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl ValueEnum for Color {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[
+            Color::Black,
+            Color::Red,
+            Color::Green,
+            Color::Yellow,
+            Color::Blue,
+            Color::Magenta,
+            Color::Cyan,
+            Color::White,
+        ]
+    }
+
+    fn to_possible_value(&self) -> Option<PossibleValue> {
+        match self {
+            Color::Black => Some(PossibleValue::new("black").alias("k").alias("0")),
+            Color::Red => Some(PossibleValue::new("red").alias("r").alias("1")),
+            Color::Green => Some(PossibleValue::new("green").alias("g").alias("2")),
+            Color::Yellow => Some(PossibleValue::new("yellow").alias("y").alias("3")),
+            Color::Blue => Some(PossibleValue::new("blue").alias("b").alias("4")),
+            Color::Magenta => Some(PossibleValue::new("magenta").alias("m").alias("5")),
+            Color::Cyan => Some(PossibleValue::new("cyan").alias("c").alias("6")),
+            Color::White => Some(PossibleValue::new("white").alias("w").alias("7")),
+        }
+    }
+}
+
+impl Default for Color {
+    fn default() -> Self {
+        Color::White
+    }
+}

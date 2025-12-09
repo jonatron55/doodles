@@ -11,7 +11,10 @@ use crossterm::{
     execute,
     terminal::{self, Clear, ClearType},
 };
-use doodles::common::term::{CommonArgs, WaitResult, cleanup_term, setup_term};
+use doodles::common::{
+    color::Color,
+    term::{CommonArgs, WaitResult, cleanup_term, setup_term},
+};
 use rand::Rng;
 use rand::seq::SliceRandom;
 
@@ -34,7 +37,7 @@ pub struct Args {
 
     /// Maze wall color.
     #[clap(short = 'c', long)]
-    color: Option<u8>,
+    color: Option<Color>,
 
     /// Agent render style.
     #[clap(short = 'a', long)]
@@ -55,32 +58,32 @@ const MAZE_STYLES: [MazeRenderStyle; 6] = [
     MazeRenderStyle {
         outer: WallStyle::Solid,
         inner: WallStyle::Solid,
-        color: 7,
+        color: Color::White,
     },
     MazeRenderStyle {
         outer: WallStyle::Bold,
         inner: WallStyle::Curved,
-        color: 7,
+        color: Color::White,
     },
     MazeRenderStyle {
         outer: WallStyle::Double,
         inner: WallStyle::Double,
-        color: 7,
+        color: Color::White,
     },
     MazeRenderStyle {
         outer: WallStyle::Block,
         inner: WallStyle::Block,
-        color: 7,
+        color: Color::White,
     },
     MazeRenderStyle {
         outer: WallStyle::Block,
         inner: WallStyle::Hedge,
-        color: 7,
+        color: Color::White,
     },
     MazeRenderStyle {
         outer: WallStyle::Hedge,
         inner: WallStyle::Hedge,
-        color: 7,
+        color: Color::White,
     },
 ];
 
@@ -115,7 +118,7 @@ fn main() -> IoResult<()> {
         let maze_style = MAZE_STYLES[maze_style % MAZE_STYLES.len()].clone();
 
         let maze_style =
-            maze_style.with_color(args.color.unwrap_or_else(|| rand.random_range(1..8) % 8));
+            maze_style.with_color(args.color.unwrap_or_else(|| Color::choose(&mut rand)));
 
         let agent_style = args
             .agent_style

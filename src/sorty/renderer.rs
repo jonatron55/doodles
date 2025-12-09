@@ -5,7 +5,10 @@ use std::io::{Result as IoResult, Write, stdout};
 
 use bitvec::bitvec;
 use crossterm::{cursor::MoveTo, queue, style::PrintStyledContent};
-use doodles::common::term::{DIM_STYLES, STYLES};
+use doodles::common::{
+    color::Color,
+    term::{DIM_STYLES, STYLES},
+};
 
 #[derive(Clone, Copy)]
 pub enum RenderStyle {
@@ -27,7 +30,7 @@ pub fn render(
     actual: &[usize],
     width: usize,
     height: usize,
-    colors: [u8; 2],
+    colors: [Color; 2],
     style: RenderStyle,
 ) -> IoResult<bool> {
     let mut stdout = stdout();
