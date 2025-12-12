@@ -17,25 +17,54 @@ use crossterm::{
 use doodles::common::{
     borders::BorderStyle,
     color::Color,
-    dir::Directions,
+    dir::{Direction, Directions},
     term::{DIM_STYLES, STYLES},
 };
 use rand::{Rng, seq::SliceRandom};
 
 use crate::agent::{Agent, RenderStyle as AgentRenderStyle};
 
+/// A two-dimensional maze.
+///
+/// The maze is represented as a grid of cells, each of which may have walls blocking movement to adjacent cells. Each
+/// cell stores whether it has walls to the east and south; walls to the north and west implied by its neighbors in
+/// these directions. While generating the maze, each cell also tracks whether it has been visited by the generation
+/// algorithm.
+///
+/// The entrance is implied to be at the northwest corner (0, 0) and all other cells at the north or west edges are
+/// implied to be impassable in those directions. The exit is explicitly placed at the southeast corner by removing the
+/// east wall of that cell.
+///
+/// The maze is initially completely impassable and is generated using a randomized depth-first search algorithm. The
+/// function [`Maze::build_next`] should be called repeatedly until it returns `false`, indicating that the maze is
+/// fully generated.
 pub struct Maze {
+    /// Total number of cells in the horizontal direction.
     width: usize,
+
+    /// Total number of cells in the vertical direction.
     height: usize,
+
+    /// Cells in row-major order.
     cells: Vec<Cell>,
+
+    /// Cached bitmap representation for rendering.
     bitmap: RefCell<Option<BitVec>>,
+
+    /// Remaining open cells to process during maze generation.
     open: Vec<OpenCell>,
 }
 
+/// Maze rendering style.
 #[derive(Clone, Debug)]
 pub struct RenderStyle {
+    /// Style for the outer border walls.
     pub outer: WallStyle,
+
+    /// Style for the interior walls.
     pub inner: WallStyle,
+
+    /// Wall color.
     pub color: Color,
 }
 
@@ -49,8 +78,12 @@ pub enum WallStyle {
     Hedge,
 }
 
+/// A cell that has been encountered during maze generation but not yet visited.
 struct OpenCell {
+    /// Position of the cell.
     cell: (usize, usize),
+
+    /// Position from which this cell was reached.
     from: (usize, usize),
 }
 
@@ -61,15 +94,24 @@ const HEDGE_CHARS: [char; 51] = [
 ];
 
 bitflags! {
+    /// Representation of a single maze cell.
+    ///
+    /// Note that walls to the north and west are not stored explicitly, but are implied by neighboring cells.
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub struct Cell: u8 {
+        /// This cell is impassable to the east.
         const WALL_EAST  = 0b0000_0010;
+
+        /// This cell is impassable to the south.
         const WALL_SOUTH = 0b0000_0100;
+
+        /// This cell has been visited during maze generation.
         const VISITED    = 0b1000_0000;
     }
 }
 
 impl Maze {
+    /// Create a new, ungenerated maze of the given size.
     pub fn new(width: usize, height: usize) -> Self {
         let mut cells = vec![Cell::default(); width * height];
         cells[width * height - 1].remove(Cell::WALL_EAST); // Exit
@@ -86,17 +128,21 @@ impl Maze {
         }
     }
 
+    /// Compute all walls present at the given cell.
     pub fn walls(&self, x: usize, y: usize) -> Directions {
         let cell = self.cells[self.cell_index(x, y)];
         let mut walls = Directions::empty();
 
+        // East and South walls are stored by the cell itself.
         if cell.contains(Cell::WALL_EAST) {
             walls |= Directions::EAST;
         }
+
         if cell.contains(Cell::WALL_SOUTH) {
             walls |= Directions::SOUTH;
         }
 
+        // North and West walls are implied by neighboring cells or the maze border.
         if x == 0 || self.cells[self.cell_index(x - 1, y)].contains(Cell::WALL_EAST) {
             walls |= Directions::WEST;
         }
@@ -108,28 +154,35 @@ impl Maze {
         walls
     }
 
+    /// Perform the next step of maze generation.
+    ///
+    /// Returns `true` if more steps are needed, or `false` if the maze is fully generated.
     pub fn build_next<R: Rng>(&mut self, rand: &mut R) -> bool {
         let mut dirs = [
-            Directions::NORTH,
-            Directions::EAST,
-            Directions::SOUTH,
-            Directions::WEST,
+            Direction::North,
+            Direction::East,
+            Direction::South,
+            Direction::West,
         ];
 
+        // Get the next unvisited cell.
         let Some(OpenCell {
             cell: (x, y),
             from: (from_x, from_y),
         }) = self.pop_unvisited()
         else {
+            // No more open cells; maze generation is complete.
             return false;
         };
 
         let current = self.cell_index(x, y);
+
+        // Mark cell as visited.
         self.cells[current].insert(Cell::VISITED);
 
         let from = self.cell_index(from_x, from_y);
 
-        // Remove wall between cells
+        // Remove wall between current and previous cell.
         if x < from_x {
             self.cells[current].remove(Cell::WALL_EAST);
         } else if x > from_x {
@@ -140,15 +193,12 @@ impl Maze {
             self.cells[from].remove(Cell::WALL_SOUTH);
         }
 
+        // Push unvisited neighbors in random order.
         dirs.shuffle(rand);
 
         for &dir in &dirs {
-            let (nx, ny) = match dir {
-                Directions::NORTH if y > 0 => (x, y - 1),
-                Directions::EAST if x + 1 < self.width => (x + 1, y),
-                Directions::SOUTH if y + 1 < self.height => (x, y + 1),
-                Directions::WEST if x > 0 => (x - 1, y),
-                _ => continue,
+            let Some((nx, ny)) = dir.move_point_within((x, y), (self.width, self.height)) else {
+                continue;
             };
 
             let next = self.cell_index(nx, ny);
@@ -161,11 +211,16 @@ impl Maze {
             }
         }
 
+        // Invalidate cached bitmap.
         self.bitmap.replace(None);
 
         true
     }
 
+    /// Render the maze to the terminal.
+    ///
+    /// Note that the total size of the rendered maze will be `(width * 2 + 1)` by `(height * 2 + 1)` characters to
+    /// accommodate cells, internal walls, and outer borders.
     pub fn render(
         &self,
         style: &RenderStyle,
@@ -289,10 +344,12 @@ impl Maze {
         stdout.flush()
     }
 
+    /// Get the size of the maze in cells.
     pub fn size(&self) -> (usize, usize) {
         (self.width, self.height)
     }
 
+    /// Render the maze into a bitmap for efficient repeated rendering.
     fn render_bitmap(&self) {
         if self.bitmap.borrow().is_some() {
             return;
@@ -310,11 +367,13 @@ impl Maze {
                 let by = y * 2 + 1;
 
                 if visited {
+                    // Set diagonal corners
                     bitmap.set((by - 1) * bmp_width + (bx - 1), true);
                     bitmap.set((by - 1) * bmp_width + (bx + 1), true);
                     bitmap.set((by + 1) * bmp_width + (bx + 1), true);
                     bitmap.set((by + 1) * bmp_width + (bx - 1), true);
 
+                    // Set walls as needed
                     if cell.contains(Cell::WALL_EAST) {
                         bitmap.set(by * bmp_width + (bx + 1), true);
                     }
@@ -339,14 +398,19 @@ impl Maze {
         self.bitmap.replace(Some(bitmap));
     }
 
+    /// Get the linear index of a cell at the given coordinates.
     fn cell_index(&self, x: usize, y: usize) -> usize {
         y * self.width + x
     }
 
+    /// Gets the total rendered bitmap size in characters.
     fn bitmap_size(&self) -> (usize, usize) {
         (self.width * 2 + 1, self.height * 2 + 1)
     }
 
+    /// Pop the next unvisited open cell from the stack, skipping any that have already been visited.
+    ///
+    /// Returns `None` if there are no unvisited open cells remaining (i.e., maze generation is complete).
     fn pop_unvisited(&mut self) -> Option<OpenCell> {
         while let Some(open_cell) = self.open.pop() {
             let (x, y) = open_cell.cell;

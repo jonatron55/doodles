@@ -50,10 +50,16 @@ pub struct CommonArgs {
     wait: u64,
 }
 
+/// Result of a wait operation.
 #[derive(Debug, PartialEq, Eq)]
 pub enum WaitResult {
+    /// The wait completed and the animation should continue.
     Continue,
+
+    /// The screen was resized and the animation should adjust accordingly.
     Resize(usize, usize),
+
+    /// The user requested to exit the program. The animation should halt.
     Exit,
 }
 
@@ -226,6 +232,12 @@ pub fn error(msg: &str) {
     );
 }
 
+/// Set up the terminal for alternate screen rendering.
+///
+/// This will register a Ctrl+C handler that will clean up the terminal state
+/// and exit the program when triggered.
+///
+/// On a graceful exit, the caller should invoke [`cleanup_term`] to restore the terminal state.
 pub fn setup_term() -> IoResult<()> {
     execute!(
         stdout(),
@@ -242,13 +254,16 @@ pub fn setup_term() -> IoResult<()> {
     .map_err(|err| {
         IoError::new(
             IoErrorKind::Other,
-            format!("Failed to set Ctrl-C handler: {}", err),
+            format!("Failed to set Ctrl+C handler: {}", err),
         )
     })?;
 
     Ok(())
 }
 
+/// Restore the terminal to its original state after alternate screen rendering.
+///
+/// This undoes the effects of [`setup_term`].
 pub fn cleanup_term() -> IoResult<()> {
     execute!(
         stdout(),
@@ -279,16 +294,7 @@ macro_rules! abort {
 }
 
 impl CommonArgs {
-    /// Wait for either a delay to elapse or a keypress event, depending on the
-    /// arguments.
-    ///
-    /// Returns
-    /// =======
-    ///
-    /// - `WaitResult::Continue(Some(Event))` if an event was detected.
-    /// - `WaitResult::Continue(None)` if the wait time elapsed without events
-    ///   and [`CommonArgs::interactive`] is false.
-    /// - `WaitResult::Exit` if the user requested to exit (Esc or 'q' key).
+    /// Wait for either a delay to elapse or a keypress event, depending on the arguments.
     pub fn wait(&self) -> IoResult<WaitResult> {
         loop {
             let result = if self.interactive {
@@ -318,9 +324,7 @@ impl CommonArgs {
                 Event::Key(ev)
                     if ev.is_press()
                         && !ev.is_repeat()
-                        && (!self.interactive
-                            || ev.code == KeyCode::Esc
-                            || ev.code == KeyCode::Char('q')) =>
+                        && (ev.code == KeyCode::Esc || ev.code == KeyCode::Char('q')) =>
                 {
                     Ok(Some(WaitResult::Exit))
                 }

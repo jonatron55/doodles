@@ -6,15 +6,17 @@ use rand::{Rng, seq::IteratorRandom};
 
 use crate::common::borders::*;
 
+/// A single cardinal direction.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Direction {
-    North,
-    East,
-    South,
-    West,
+    North = 0b0001,
+    East = 0b0010,
+    South = 0b0100,
+    West = 0b1000,
 }
 
 bitflags! {
+    /// A set of cardinal directions.
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub struct Directions: u8 {
         const NORTH = 0b0001;
@@ -25,6 +27,7 @@ bitflags! {
 }
 
 impl Direction {
+    /// Choose a random direction.
     pub fn choose<R: Rng>(rand: &mut R) -> Self {
         match rand.random_range(0..4) {
             0 => Direction::North,
@@ -35,6 +38,7 @@ impl Direction {
         }
     }
 
+    /// Returns the opposite direction.
     pub fn opposite(self) -> Direction {
         match self {
             Direction::North => Direction::South,
@@ -44,6 +48,7 @@ impl Direction {
         }
     }
 
+    /// Returns the clockwise direction.
     pub fn clockwise(self) -> Direction {
         match self {
             Direction::North => Direction::East,
@@ -53,6 +58,7 @@ impl Direction {
         }
     }
 
+    /// Returns the counterclockwise direction.
     pub fn counterclockwise(self) -> Direction {
         match self {
             Direction::North => Direction::West,
@@ -62,8 +68,17 @@ impl Direction {
         }
     }
 
-    pub fn move_position(&self, position: (usize, usize)) -> (usize, usize) {
-        let (x, y) = position;
+    /// Moves an integer point one step in this direction.
+    ///
+    /// The point uses terminal coordinates, with the y-axis increasing downward:
+    ///
+    /// - [`Direction::North`] will decrease *y*
+    /// - [`Direction::East`] will increase *x*
+    /// - [`Direction::South`] will increase *y*
+    /// - [`Direction::West`] will decrease *x*
+    ///
+    /// The coordinates are not checked for overflow or underflow.
+    pub fn move_point(&self, (x, y): (usize, usize)) -> (usize, usize) {
         match self {
             Direction::North => (x, y - 1),
             Direction::East => (x + 1, y),
@@ -71,13 +86,40 @@ impl Direction {
             Direction::West => (x - 1, y),
         }
     }
+
+    /// Moves an integer point one step in this direction without exceeding the given bounds.
+    ///
+    /// The point uses terminal coordinates, with the y-axis increasing downward:
+    ///
+    /// - [`Direction::North`] will decrease *y*
+    /// - [`Direction::East`] will increase *x*
+    /// - [`Direction::South`] will increase *y*
+    /// - [`Direction::West`] will decrease *x*
+    ///
+    /// The coordinates are checked against the given width and height, and `None` is returned
+    /// if the move would exceed the bounds.
+    pub fn move_point_within(
+        &self,
+        (x, y): (usize, usize),
+        (w, h): (usize, usize),
+    ) -> Option<(usize, usize)> {
+        match self {
+            Direction::North if y > 0 => Some((x, y - 1)),
+            Direction::East if x + 1 < w => Some((x + 1, y)),
+            Direction::South if y + 1 < h => Some((x, y + 1)),
+            Direction::West if x > 0 => Some((x - 1, y)),
+            _ => None,
+        }
+    }
 }
 
 impl Directions {
+    /// Choose a random direction from the set.
     pub fn choose<R: Rng>(&self, rand: &mut R) -> Option<Direction> {
         self.iter().choose(rand).and_then(|d| d.try_into().ok())
     }
 
+    /// Returns the border character for this combination of vertical and horizontal styles.
     pub fn border(self, vertical_style: BorderStyle, horizontal_style: BorderStyle) -> char {
         let borders =
             match (vertical_style, horizontal_style) {

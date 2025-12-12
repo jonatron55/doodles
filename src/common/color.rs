@@ -1,7 +1,10 @@
 // Copyright (c) 2025 Jonathon Burnham Cobb
 // Licensed under the MIT-0 license.
 
-use std::str::FromStr;
+use std::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    str::FromStr,
+};
 
 use clap::{ValueEnum, builder::PossibleValue};
 use crossterm::style::{Color as TermColor, ContentStyle};
@@ -28,7 +31,7 @@ pub enum Color {
 impl Color {
     /// Choose a random color.
     pub fn choose<R: Rng>(rand: &mut R) -> Self {
-        let value = rand.random_range(0..8);
+        let value = rand.random_range(1..8);
         Color::from(value)
     }
 
@@ -108,7 +111,7 @@ impl Into<u8> for Color {
 
 impl From<u8> for Color {
     fn from(value: u8) -> Self {
-        match value % 8 {
+        match value & 7 {
             0 => Color::Black,
             1 => Color::Red,
             2 => Color::Green,
@@ -122,6 +125,7 @@ impl From<u8> for Color {
     }
 }
 
+// Allows parsing and listing of colors as command line argument values.
 impl ValueEnum for Color {
     fn value_variants<'a>() -> &'a [Self] {
         &[
@@ -153,5 +157,11 @@ impl ValueEnum for Color {
 impl Default for Color {
     fn default() -> Self {
         Color::White
+    }
+}
+
+impl Display for Color {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "{self:?}")
     }
 }

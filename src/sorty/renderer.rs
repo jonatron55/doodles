@@ -1,22 +1,28 @@
 // Copyright (c) 2025 Jonathon Burnham Cobb
 // Licensed under the MIT-0 license.
 
-use std::io::{Result as IoResult, Write, stdout};
+use std::{
+    cmp::Ordering,
+    io::{Result as IoResult, Write, stdout},
+    str::FromStr,
+};
 
 use bitvec::bitvec;
+use clap::{ValueEnum, builder::PossibleValue};
 use crossterm::{cursor::MoveTo, queue, style::PrintStyledContent};
 use doodles::common::{
     color::Color,
     term::{DIM_STYLES, STYLES},
 };
+use rand::Rng;
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
+#[repr(u8)]
 pub enum RenderStyle {
-    Block,
-    DotsAsc,
-    DotsDesc,
-    Fraction,
-    Octal,
+    Block = 0,
+    Dots = 1,
+    Fraction = 2,
+    Octal = 3,
 }
 
 const BLOCK_GLYPHS: [&str; 9] = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"];
@@ -32,6 +38,7 @@ pub fn render(
     height: usize,
     colors: [Color; 2],
     style: RenderStyle,
+    ordering: Ordering,
 ) -> IoResult<bool> {
     let mut stdout = stdout();
 
@@ -40,8 +47,10 @@ pub fn render(
 
     let glyphs = match style {
         RenderStyle::Block => BLOCK_GLYPHS,
-        RenderStyle::DotsAsc => DOT_GLYPHS_ASC,
-        RenderStyle::DotsDesc => DOT_GLYPHS_DESC,
+        RenderStyle::Dots => match ordering {
+            Ordering::Less => DOT_GLYPHS_ASC,
+            _ => DOT_GLYPHS_DESC,
+        },
         RenderStyle::Fraction => FRACTION_GLYPHS,
         RenderStyle::Octal => OCTAL_GLYPHS,
     };
@@ -102,4 +111,68 @@ pub fn render(
     stdout.flush()?;
 
     Ok(converged)
+}
+
+impl RenderStyle {
+    pub fn choose<R: Rng>(rand: &mut R) -> Self {
+        let value = rand.random_range(0..4);
+        RenderStyle::from(value)
+    }
+}
+
+impl FromStr for RenderStyle {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Ok(value) = s.parse::<u8>() {
+            Ok(RenderStyle::from(value))
+        } else {
+            let s = s.to_uppercase();
+            match s.as_str() {
+                "B" | "BLACK" => Ok(RenderStyle::Block),
+                "D" | "DOTS" => Ok(RenderStyle::Dots),
+                "F" | "FRACTION" => Ok(RenderStyle::Fraction),
+                "O" | "OCTAL" => Ok(RenderStyle::Octal),
+                _ => Err(()),
+            }
+        }
+    }
+}
+
+impl Into<u8> for RenderStyle {
+    fn into(self) -> u8 {
+        self as u8
+    }
+}
+
+impl From<u8> for RenderStyle {
+    fn from(value: u8) -> Self {
+        match value % 4 {
+            0 => RenderStyle::Block,
+            1 => RenderStyle::Dots,
+            2 => RenderStyle::Fraction,
+            3 => RenderStyle::Octal,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl ValueEnum for RenderStyle {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[
+            RenderStyle::Block,
+            RenderStyle::Dots,
+            RenderStyle::Fraction,
+            RenderStyle::Octal,
+        ]
+    }
+
+    fn to_possible_value(&self) -> Option<PossibleValue> {
+        match self {
+            RenderStyle::Block => Some(PossibleValue::new("block").alias("b").alias("0")),
+            RenderStyle::Dots => Some(PossibleValue::new("dots").alias("d").alias("1")),
+            RenderStyle::Fraction => Some(PossibleValue::new("fraction").alias("f").alias("2")),
+            RenderStyle::Octal => Some(PossibleValue::new("octal").alias("o").alias("3")),
+        }
+    }
 }

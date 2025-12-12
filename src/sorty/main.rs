@@ -9,7 +9,7 @@ use doodles::common::{
     color::Color,
     term::{CommonArgs, WaitResult, cleanup_term, setup_term},
 };
-use rand::{Rng, random_bool, seq::SliceRandom};
+use rand::{random_bool, seq::SliceRandom};
 
 use crate::{
     bubble::{BubbleState, step_bubble},
@@ -28,15 +28,15 @@ pub struct Args {
     #[clap(flatten)]
     common: CommonArgs,
 
-    /// Rendering style (0-3).
+    /// Rendering style.
     #[arg(short = 's', long)]
-    style: Option<usize>,
+    style: Option<RenderStyle>,
 
     /// Inactive color.
     #[arg(short = 'c', long)]
     color1: Option<Color>,
 
-    /// Active color (0-7).
+    /// Active color.
     #[arg(short = 'C', long)]
     color2: Option<Color>,
 
@@ -75,7 +75,7 @@ fn main() -> IoResult<()> {
     }
 
     let (width, height) = terminal::size()?;
-    let (width, height) = (width as usize, height as usize);
+    let (mut width, mut height) = (width as usize, height as usize);
 
     let mut rand = rand::rng();
 
@@ -106,16 +106,7 @@ fn main() -> IoResult<()> {
             args.color2.unwrap_or_else(|| Color::choose(&mut rand)),
         ];
 
-        let style = match args.style.unwrap_or_else(|| rand.random_range(0..4)) % 4 {
-            0 => RenderStyle::Block,
-            1 => match ordering {
-                Ordering::Greater => RenderStyle::DotsDesc,
-                _ => RenderStyle::DotsAsc,
-            },
-            2 => RenderStyle::Fraction,
-            3 => RenderStyle::Octal,
-            _ => unreachable!(),
-        };
+        let style = args.style.unwrap_or_else(|| RenderStyle::choose(&mut rand));
 
         actual.shuffle(&mut rand);
 
@@ -129,12 +120,20 @@ fn main() -> IoResult<()> {
             SortState::QSort(state) => step_qsort(&mut actual, ordering, state),
         } {
             while displayed != actual {
-                renderer::render(&mut displayed, &actual, width, height, colors, style)?;
+                renderer::render(
+                    &mut displayed,
+                    &actual,
+                    width,
+                    height,
+                    colors,
+                    style,
+                    ordering,
+                )?;
 
                 match args.common.wait()? {
                     WaitResult::Continue => {}
-                    WaitResult::Resize(width, height) => {
-                        let (width, height) = (width as usize, height as usize);
+                    WaitResult::Resize(new_width, new_height) => {
+                        (width, height) = (new_width, new_height);
                         actual = (0..width).map(|x| 8 * x * height / width).collect();
                         displayed = vec![0; width];
                         continue 'outer;

@@ -22,7 +22,7 @@ const DOODLES: [Doodle; 4] = [
     },
     Doodle {
         name: "digirain",
-        args: &["--wait=64", "--iter=384"],
+        args: &["--wait=64", "--iter=512"],
     },
     Doodle {
         name: "maze",

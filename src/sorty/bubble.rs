@@ -3,13 +3,31 @@
 
 use std::cmp::Ordering;
 
+/// Persisted state for bubble sort algorithm.
 pub struct BubbleState {
+    /// `true` for left-to-right pass, `false` for right-to-left pass.
     direction: bool,
+
+    /// Current index within the pass.
     index: usize,
 }
 
+/// Perform a single step of the bubble sort algorithm.
+///
+/// Arguments
+/// ---------
+///
+/// - `values`: The slice of values to sort. This will be modified in place.
+/// - `width`: The number of elements in `values`.
+/// - `ordering`: The desired ordering (Less for ascending, Greater for descending).
+/// - `state`: The persisted state of the bubble sort algorithm. This will be modified in place.
+///
+/// Returns
+/// -------
+///
+/// `true` if the sorting is complete, `false` if more steps are needed.
 pub fn step_bubble(
-    actual: &mut [usize],
+    values: &mut [usize],
     width: usize,
     ordering: Ordering,
     state: &mut BubbleState,
@@ -20,21 +38,23 @@ pub fn step_bubble(
         width - 2 - state.index
     };
 
-    let a = actual[i];
-    let b = actual[i + 1];
+    let a = values[i];
+    let b = values[i + 1];
 
     if a.cmp(&b) == ordering {
-        actual[i] = b;
-        actual[i + 1] = a;
+        values[i] = b;
+        values[i + 1] = a;
     }
 
     state.index += 1;
 
     if state.index >= width - 1 {
+        // Reach the end of the pass; reset for next pass
         state.index = 0;
         state.direction = !state.direction;
 
-        if actual.windows(2).all(|w| w[0].cmp(&w[1]) != ordering) {
+        if values.windows(2).all(|w| w[0].cmp(&w[1]) != ordering) {
+            // Sorting complete
             return true;
         }
     }

@@ -1,13 +1,22 @@
 // Copyright (c) 2025 Jonathon Burnham Cobb
 // Licensed under the MIT-0 license.
 
+/// A style of character border.
 pub enum BorderStyle {
+    /// Single-line border: `┌─┐`.
     Single,
+
+    /// Single-line border with curved corners: `╭─╮`.
     Curved,
+
+    /// Bold single-line border: `┏━┓`.
     Bold,
+
+    /// Double-line border: `╔═╗`.
     Double,
 }
 
+/// Single-line border characters for all combinations of connections.
 pub const BORDERS_SINGLE: [char; 16] = [
     ' ', // 0b0000 (NONE)
     '╵', // 0b0001 (NORTH)
@@ -27,6 +36,7 @@ pub const BORDERS_SINGLE: [char; 16] = [
     '┼', // 0b1111 (NORTH | EAST | SOUTH | WEST)
 ];
 
+/// Curved border characters for all combinations of connections.
 pub const BORDERS_CURVED: [char; 16] = [
     ' ', // 0b0000 (NONE)
     '╵', // 0b0001 (NORTH)
@@ -46,6 +56,7 @@ pub const BORDERS_CURVED: [char; 16] = [
     '┼', // 0b1111 (NORTH | EAST | SOUTH | WEST)
 ];
 
+/// Double-line border characters for all combinations of connections.
 pub const BORDERS_DOUBLE: [char; 16] = [
     ' ', // 0b0000 (NONE)
     '╨', // 0b0001 (NORTH)
@@ -65,6 +76,7 @@ pub const BORDERS_DOUBLE: [char; 16] = [
     '╬', // 0b1111 (NORTH | EAST | SOUTH | WEST)
 ];
 
+/// Border characters for double vertical and single horizontal lines.
 pub const BORDERS_DOUBLE_SINGLE: [char; 16] = [
     ' ', // 0b0000 (NONE)
     '╨', // 0b0001 (NORTH)
@@ -84,6 +96,7 @@ pub const BORDERS_DOUBLE_SINGLE: [char; 16] = [
     '╫', // 0b1111 (NORTH | EAST | SOUTH | WEST)
 ];
 
+/// Border characters for single vertical and double horizontal lines.
 pub const BORDERS_SINGLE_DOUBLE: [char; 16] = [
     ' ', // 0b0000 (NONE)
     '╵', // 0b0001 (NORTH)
@@ -103,6 +116,7 @@ pub const BORDERS_SINGLE_DOUBLE: [char; 16] = [
     '╪', // 0b1111 (NORTH | EAST | SOUTH | WEST)
 ];
 
+/// Bold border characters for all combinations of connections.
 pub const BORDERS_BOLD: [char; 16] = [
     ' ', // 0b0000 (NONE)
     '╹', // 0b0001 (NORTH)
@@ -122,6 +136,7 @@ pub const BORDERS_BOLD: [char; 16] = [
     '╋', // 0b1111 (NORTH | EAST | SOUTH | WEST)
 ];
 
+/// Border characters for bold vertical and single horizontal lines.
 pub const BORDERS_BOLD_SINGLE: [char; 16] = [
     ' ', // 0b0000 (NONE)
     '╹', // 0b0001 (NORTH)
@@ -141,6 +156,7 @@ pub const BORDERS_BOLD_SINGLE: [char; 16] = [
     '╂', // 0b1111 (NORTH | EAST | SOUTH | WEST)
 ];
 
+/// Border characters for single vertical and bold horizontal lines.
 pub const BORDERS_SINGLE_BOLD: [char; 16] = [
     ' ', // 0b0000 (NONE)
     '╵', // 0b0001 (NORTH)

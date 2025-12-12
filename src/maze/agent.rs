@@ -4,47 +4,89 @@
 use std::{
     collections::HashSet,
     io::{Result as IoResult, stdout},
+    str::FromStr,
 };
 
+use clap::{ValueEnum, builder::PossibleValue};
 use crossterm::{cursor::MoveTo, queue, style::PrintStyledContent};
 use doodles::common::{
+    color::Color,
     dir::{Direction, Directions},
-    term::BOLD_STYLES,
 };
 use rand::Rng;
 
 use crate::maze::Maze;
 
-pub struct Agent {
+/// A maze-solving agent.
+///
+/// Navigates the maze using a randomized depth-first search until it either finds the exit or exhausts all options.
+pub struct Agent<'a> {
+    maze: &'a Maze,
+    /// Current position within the maze.
+    ///
+    /// This is in maze cell coordinates, not terminal character coordinates. The rendering position of the agent
+    /// depends on whether it is in the center of a cell or moving between cells.
     position: (usize, usize),
+
+    /// Current state.
     state: State,
-    color: u8,
+
+    /// Render color.
+    color: Color,
+
+    /// Stack of junctions already visited.
     path: Vec<Junction>,
+
+    /// Set of closed (already visited) positions.
     closed: HashSet<(usize, usize)>,
+
+    /// Current facing direction.
     dir: Direction,
 }
 
+/// Method for rendering the agent.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
 pub enum RenderStyle {
-    Smiley,
-    Inchworm,
-    Turtle,
+    /// Agent rendered as a smiley face (`☻`).
+    Smiley = 0,
+
+    /// Agent rendered as alternating dots (`•`) and lines (`┃` or `━`).
+    Inchworm = 1,
+
+    /// Agent rendered as directional arrows (`▲`, `▶`, `▼`, `◀`).
+    Turtle = 2,
 }
 
+/// A maze-solving agent state.
 enum State {
+    /// Agent is at a junction, deciding which way to go.
     Thinking,
+
+    /// Agent is moving from one cell to another in the given direction.
     Moving(Direction),
-    Halted,
+
+    /// Agent has solved the maze and halted.
+    Exited,
+
+    /// Agent has exhausted all options without finding an exit and has halted.
+    Stuck,
 }
 
+/// A n agent's memory of a junction.
 struct Junction {
+    /// Unexplored directions at this junction.
     open: Directions,
+
+    /// Direction from which the agent arrived at this junction.
     from: Option<Direction>,
 }
 
-impl Agent {
-    pub fn new(maze: &Maze, color: u8) -> Self {
+impl<'a> Agent<'a> {
+    /// Create a new agent at the start of the maze.
+    pub fn new(maze: &'a Maze, color: Color) -> Self {
         Agent {
+            maze,
             position: (0, 0),
             state: State::Thinking,
             color,
@@ -57,38 +99,52 @@ impl Agent {
         }
     }
 
-    pub fn update<R: Rng>(&mut self, maze: &Maze, rand: &mut R) {
+    /// Update the agent's state by performing one step of a randomized depth-first search. This will have no effect if
+    /// the agent has already halted.
+    pub fn update<R: Rng>(&mut self, rand: &mut R) {
         match &self.state {
             State::Thinking => {
+                // We are at a junction. If there are any unexplored paths from here, then take one at random.
+                // Otherwise, backtrack to the previous junction.
+
                 if let Some(junction) = self.path.last_mut() {
                     if let Some(choice) = junction.open.choose(rand) {
+                        // Take this unexplored path.
                         self.state = State::Moving(choice);
                         self.dir = choice;
                         junction.open.remove(choice.into());
                     } else {
+                        // We've completely explored this junction; backtrack to the previous one.
                         if let Some(from) = junction.from {
                             self.state = State::Moving(from);
                             self.path.pop();
                         } else {
-                            self.state = State::Halted;
+                            // No unexplored paths and no way back. This means the maze is insoluble and should be
+                            // unreachable if the maze generation algorithm is correct.
+                            self.state = State::Stuck;
                         }
                     }
                 } else {
-                    self.state = State::Halted;
+                    // We've backed all the way to the start and exhausted all options. The maze is insoluble.
+                    self.state = State::Stuck;
                 }
             }
             State::Moving(dir) => {
+                // We are moving in the given direction. Update our position accordingly and prepare to think again.
                 self.closed.insert(self.position);
-                let (x, y) = dir.move_position(self.position);
-                let (w, h) = maze.size();
+                let (x, y) = dir.move_point(self.position);
+                let (w, h) = self.maze.size();
 
                 if x >= w || y >= h {
-                    self.state = State::Halted;
+                    // We found the exit!
+                    self.state = State::Exited;
                 } else {
+                    // Move into the new cell.
                     self.position = (x, y);
 
                     if !self.closed.contains(&(x, y)) {
-                        let mut open = maze.walls(x, y).complement();
+                        // We've never been here before; add a new junction to the stack.
+                        let mut open = self.maze.walls(x, y).complement();
                         let from = dir.opposite();
                         open.remove(from.into());
                         self.path.push(Junction {
@@ -100,52 +156,134 @@ impl Agent {
                     self.state = State::Thinking;
                 }
             }
-            State::Halted => {}
+            State::Exited | State::Stuck => {
+                // The agent has halted; do nothing.
+            }
         }
     }
 
+    /// Render the agent at its current position.
     pub fn render(&self, style: &RenderStyle) -> IoResult<()> {
         let (x, y) = self.render_position();
 
-        let s = match style {
-            RenderStyle::Smiley => "☻",
-            RenderStyle::Inchworm => match &self.state {
-                State::Thinking => "•",
-                State::Moving(Direction::North) | State::Moving(Direction::South) => "┃",
-                State::Moving(Direction::East) | State::Moving(Direction::West) => "━",
-                State::Halted => "•",
-            },
+        let s = if matches!(self.state, State::Stuck) {
+            "×"
+        } else {
+            match style {
+                RenderStyle::Smiley => "☻",
+                RenderStyle::Inchworm => match &self.state {
+                    State::Thinking | State::Exited => "•",
+                    State::Moving(Direction::North) | State::Moving(Direction::South) => "┃",
+                    State::Moving(Direction::East) | State::Moving(Direction::West) => "━",
+                    State::Stuck => unreachable!(),
+                },
 
-            RenderStyle::Turtle => match &self.dir {
-                Direction::North => "▲",
-                Direction::East => "►",
-                Direction::South => "▼",
-                Direction::West => "◄",
-            },
+                RenderStyle::Turtle => match &self.dir {
+                    Direction::North => "▲",
+                    Direction::East => "▶",
+                    Direction::South => "▼",
+                    Direction::West => "◀",
+                },
+            }
         };
 
         queue!(
             stdout(),
             MoveTo(x as u16, y as u16),
-            PrintStyledContent(BOLD_STYLES[(self.color as usize) % BOLD_STYLES.len()].apply(s)),
+            PrintStyledContent(self.color.bold_style().apply(s)),
         )
     }
 
+    /// Get the agent's rendering position in terminal character coordinates.
+    ///
+    /// If the agent is in the center of a cell, this will be the center of that cell. If the agent is moving between
+    /// cells, this will be the position between the two cells in the direction of movement.
     pub fn render_position(&self) -> (usize, usize) {
-        let (mut x, mut y) = self.position;
-        x = x * 2 + 1;
-        y = y * 2 + 1;
+        let (x, y) = self.position;
 
-        if let State::Moving(dir) = &self.state {
-            (x, y) = dir.move_position((x, y));
-        } else if matches!(self.state, State::Halted) {
-            x += 1;
+        // Each cell occupies a 2x2 character block, and there is a 1-character border around the maze.
+        let x = x * 2 + 1;
+        let y = y * 2 + 1;
+
+        match self.state {
+            State::Moving(dir) => {
+                // Adjust the rendering position in the direction of movement, which will place it between cells.
+                dir.move_point((x, y))
+            }
+            State::Exited => {
+                // Move the rendering position just outside the maze exit.
+                (x + 1, y)
+            }
+            State::Thinking | State::Stuck => {
+                // Agent is stationary in the center of the cell.
+                (x, y)
+            }
         }
-
-        (x, y)
     }
 
+    /// Check if the agent has halted (either exited the maze or become stuck).
     pub fn is_halted(&self) -> bool {
-        matches!(self.state, State::Halted)
+        matches!(self.state, State::Exited | State::Stuck)
+    }
+}
+
+impl RenderStyle {
+    /// Choose a random render style.
+    pub fn choose<R: Rng>(rand: &mut R) -> Self {
+        let value = rand.random_range(0..3);
+        RenderStyle::from(value)
+    }
+}
+
+impl FromStr for RenderStyle {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Ok(value) = s.parse::<u8>() {
+            Ok(RenderStyle::from(value))
+        } else {
+            let s = s.to_uppercase();
+            match s.as_str() {
+                "S" | "SMILEY" => Ok(RenderStyle::Smiley),
+                "I" | "INCHWORM" => Ok(RenderStyle::Inchworm),
+                "T" | "TURTLE" => Ok(RenderStyle::Turtle),
+                _ => Err(()),
+            }
+        }
+    }
+}
+
+impl Into<u8> for RenderStyle {
+    fn into(self) -> u8 {
+        self as u8
+    }
+}
+
+impl From<u8> for RenderStyle {
+    fn from(value: u8) -> Self {
+        match value % 3 {
+            0 => RenderStyle::Smiley,
+            1 => RenderStyle::Inchworm,
+            2 => RenderStyle::Turtle,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl ValueEnum for RenderStyle {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[
+            RenderStyle::Smiley,
+            RenderStyle::Inchworm,
+            RenderStyle::Turtle,
+        ]
+    }
+
+    fn to_possible_value(&self) -> Option<PossibleValue> {
+        match self {
+            RenderStyle::Smiley => Some(PossibleValue::new("smiley").alias("s").alias("0")),
+            RenderStyle::Inchworm => Some(PossibleValue::new("inchworm").alias("i").alias("1")),
+            RenderStyle::Turtle => Some(PossibleValue::new("turtle").alias("t").alias("2")),
+        }
     }
 }
