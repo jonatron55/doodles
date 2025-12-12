@@ -14,13 +14,17 @@ use crossterm::{
 };
 use doodles::common::{
     color::Color,
+    image::Image,
     term::{CommonArgs, WaitResult, cleanup_term, setup_term},
 };
 use rand::Rng;
 use rand::seq::SliceRandom;
 
-use crate::agent::{Agent, RenderStyle as AgentRenderStyle};
 use crate::maze::{Maze, RenderStyle as MazeRenderStyle, WallStyle};
+use crate::{
+    agent::{Agent, RenderStyle as AgentRenderStyle},
+    maze::BiasMode,
+};
 
 mod agent;
 mod maze;
@@ -131,6 +135,12 @@ fn main() -> IoResult<()> {
         let (mut width, mut height) = terminal::size()?;
         let random_state = RandomState::new();
 
+        let bias = BiasMode::Image(Image::new_checkered(
+            width as usize,
+            height as usize,
+            (12, 6),
+        ));
+
         let maze_style = args
             .maze_style
             .unwrap_or_else(|| MazeRenderArg::choose(&mut rand));
@@ -150,7 +160,7 @@ fn main() -> IoResult<()> {
         let mut maze = Maze::new(width as usize, height as usize);
 
         'build: loop {
-            if !maze.build_next(&mut rand) {
+            if !maze.build_next(&mut rand, &bias) {
                 break 'build;
             }
 

@@ -4,6 +4,7 @@
 pub mod borders;
 pub mod color;
 pub mod dir;
+pub mod image;
 pub mod term;
 
 pub trait Lerp<T: Copy + PartialOrd> {

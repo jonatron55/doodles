@@ -18,9 +18,10 @@ use doodles::common::{
     borders::BorderStyle,
     color::Color,
     dir::{Direction, Directions},
+    image::Image,
     term::{DIM_STYLES, STYLES},
 };
-use rand::{Rng, seq::SliceRandom};
+use rand::Rng;
 
 use crate::agent::{Agent, RenderStyle as AgentRenderStyle};
 
@@ -76,6 +77,11 @@ pub enum WallStyle {
     Bold,
     Block,
     Hedge,
+}
+
+pub enum BiasMode {
+    Uniform(f64),
+    Image(Image),
 }
 
 /// A cell that has been encountered during maze generation but not yet visited.
@@ -157,14 +163,7 @@ impl Maze {
     /// Perform the next step of maze generation.
     ///
     /// Returns `true` if more steps are needed, or `false` if the maze is fully generated.
-    pub fn build_next<R: Rng>(&mut self, rand: &mut R) -> bool {
-        let mut dirs = [
-            Direction::North,
-            Direction::East,
-            Direction::South,
-            Direction::West,
-        ];
-
+    pub fn build_next<R: Rng>(&mut self, rand: &mut R, bias: &BiasMode) -> bool {
         // Get the next unvisited cell.
         let Some(OpenCell {
             cell: (x, y),
@@ -194,7 +193,34 @@ impl Maze {
         }
 
         // Push unvisited neighbors in random order.
-        dirs.shuffle(rand);
+        let horz = if rand.random_bool(0.5) {
+            [Direction::East, Direction::West]
+        } else {
+            [Direction::West, Direction::East]
+        };
+        let vert = if rand.random_bool(0.5) {
+            [Direction::North, Direction::South]
+        } else {
+            [Direction::South, Direction::North]
+        };
+
+        let bias = match bias {
+            BiasMode::Uniform(b) => *b,
+            BiasMode::Image(img) => {
+                let (img_width, img_height) = img.size();
+                if x < img_width && y < img_height {
+                    img.pixel(x, y) as f64
+                } else {
+                    0.5
+                }
+            }
+        };
+
+        let dirs = if rand.random_bool(bias) {
+            [horz[0], horz[1], vert[0], vert[1]]
+        } else {
+            [vert[0], vert[1], horz[0], horz[1]]
+        };
 
         for &dir in &dirs {
             let Some((nx, ny)) = dir.move_point_within((x, y), (self.width, self.height)) else {
