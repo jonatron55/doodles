@@ -19,9 +19,9 @@ impl Image {
             for x in 0..width {
                 let index = y * width + x;
                 if (x / check_size.0 + y / check_size.1) % 2 == 0 {
-                    data[index] = 240;
+                    data[index] = 208;
                 } else {
-                    data[index] = 16;
+                    data[index] = 48;
                 }
             }
         }
@@ -40,5 +40,11 @@ impl Image {
     pub fn pixel(&self, x: usize, y: usize) -> f32 {
         let index = y * self.width + x;
         self.data[index] as f32 / 255.0
+    }
+
+    pub fn invert(&mut self) {
+        for value in &mut self.data {
+            *value = 255 - *value;
+        }
     }
 }

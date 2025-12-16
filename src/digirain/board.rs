@@ -6,7 +6,7 @@ use std::io::{Result as IoResult, Write, stdout};
 use crossterm::{
     cursor::MoveTo,
     queue,
-    style::{ContentStyle, PrintStyledContent},
+    style::{Print, PrintStyledContent},
 };
 use doodles::common::{Lerp, color::Color};
 use rand::{
@@ -120,6 +120,8 @@ impl Board {
         ))
         .unwrap();
 
+        let mutate = Bernoulli::new(args.mutateprob).unwrap();
+
         // Random distribution for continuing trails. Will be rolled for each cell with a `trail_length` between
         // `min_trail` and `max_trail` (cells shorter than `min_trail` always continue and cells longer than `max_trail`
         // never continue).
@@ -132,7 +134,11 @@ impl Board {
                 if self.buffers.0[index].is_alive(args) {
                     // If we have a living cell, age it and possibly spawn a new cell below.
                     let mut cell = self.buffers.0[index].clone();
-                    cell.content = *self.alphabet.choose(rand).unwrap();
+
+                    // Randomly change the character content of the cell.
+                    if mutate.sample(rand) {
+                        cell.content = *self.alphabet.choose(rand).unwrap();
+                    }
 
                     if cell.age == 0 {
                         // This is a head cell; possibly spawn depending on the existing trail length.
@@ -203,10 +209,7 @@ impl Board {
 
                     queue!(stdout, PrintStyledContent(style.apply(cell.content)))?;
                 } else {
-                    queue!(
-                        stdout,
-                        PrintStyledContent(ContentStyle::default().apply(" "))
-                    )?;
+                    queue!(stdout, Print(if args.fullwidth { "\u{3000}" } else { " " }))?;
                 }
             }
         }

@@ -19,7 +19,6 @@ use doodles::common::{
     color::Color,
     dir::{Direction, Directions},
     image::Image,
-    term::{DIM_STYLES, STYLES},
 };
 use rand::Rng;
 
@@ -217,9 +216,9 @@ impl Maze {
         };
 
         let dirs = if rand.random_bool(bias) {
-            [horz[0], horz[1], vert[0], vert[1]]
-        } else {
             [vert[0], vert[1], horz[0], horz[1]]
+        } else {
+            [horz[0], horz[1], vert[0], vert[1]]
         };
 
         for &dir in &dirs {
@@ -279,7 +278,7 @@ impl Maze {
                     {
                         let cell = self.cells[self.cell_index(cell_x, cell_y)];
                         if !cell.contains(Cell::VISITED) {
-                            let style = &DIM_STYLES[style.color as usize];
+                            let style = &style.color.dim_style();
                             queue!(stdout, PrintStyledContent(style.apply('∎')))?;
                             continue;
                         }
@@ -318,21 +317,24 @@ impl Maze {
 
                     queue!(
                         stdout,
-                        PrintStyledContent(STYLES[style.color as usize].apply(HEDGE_CHARS[ch]))
+                        PrintStyledContent(style.color.style().apply(HEDGE_CHARS[ch]))
                     )
                 };
 
                 if style.outer == WallStyle::Block && (x_border || y_border) {
-                    queue!(
-                        stdout,
-                        PrintStyledContent(STYLES[style.color as usize].apply('█'))
-                    )?;
+                    let color = if style.inner == WallStyle::Hedge {
+                        style.color.complement().medium_style()
+                    } else {
+                        style.color.medium_style()
+                    };
+
+                    queue!(stdout, PrintStyledContent(color.apply('█')))?;
                 } else if style.outer == WallStyle::Hedge && (x_border || y_border) {
                     print_hedge(x, y)?;
                 } else if style.inner == WallStyle::Block && !(x_border || y_border) {
                     queue!(
                         stdout,
-                        PrintStyledContent(STYLES[style.color as usize].apply('█'))
+                        PrintStyledContent(style.color.medium_style().apply('█'))
                     )?;
                 } else if style.inner == WallStyle::Hedge && !(x_border || y_border) {
                     print_hedge(x, y)?;
@@ -359,7 +361,9 @@ impl Maze {
                     queue!(
                         stdout,
                         PrintStyledContent(
-                            STYLES[style.color as usize]
+                            style
+                                .color
+                                .style()
                                 .apply(dirs.border(horizontal_style, vertical_style))
                         )
                     )?;

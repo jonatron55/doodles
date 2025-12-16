@@ -62,6 +62,10 @@ pub struct Args {
     #[arg(short = 'p', long, default_value_t = 0.005)]
     spawnprob: f64,
 
+    /// Probability of mutating an existing character in each cell per frame.
+    #[arg(short = 'm', long, default_value_t = 0.15)]
+    mutateprob: f64,
+
     /// Color of the rain.
     #[arg(short = 'c', long)]
     color: Option<ColorArg>,
@@ -69,6 +73,10 @@ pub struct Args {
     /// Number of frames to "warm up" the effect before reaching full spawn probability.
     #[arg(short = 'W', long, default_value_t = 192)]
     warmup: usize,
+
+    /// Layout the characters using fullwidth glyphs.
+    #[arg(short = 'F', long)]
+    fullwidth: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -93,7 +101,11 @@ fn main() -> IoResult<()> {
 
     let mut frame = 0;
 
-    let (width, height) = terminal::size()?;
+    let (mut width, height) = terminal::size()?;
+    if args.fullwidth {
+        width /= 2;
+    }
+
     let mut rand = rand::rng();
     let alphabet = match &args.alphabet {
         Some(path) => match fs::read_to_string(&path) {
@@ -102,6 +114,8 @@ fn main() -> IoResult<()> {
                 "ASCII" => Some(Cow::Borrowed(include_str!("ascii.txt"))),
                 "CP850" => Some(Cow::Borrowed(include_str!("cp850.txt"))),
                 "DROPLETS" => Some(Cow::Borrowed(include_str!("droplets.txt"))),
+                "HIRA-KATA" => Some(Cow::Borrowed(include_str!("hira-kata.txt"))),
+                "KATASCII" => Some(Cow::Borrowed(include_str!("katascii.txt"))),
                 _ => {
                     error!("Failed to read alphabet file {}: {}", path.display(), err);
                     return Err(err);
@@ -128,7 +142,10 @@ fn main() -> IoResult<()> {
         board.render(&args)?;
 
         match args.common.wait()? {
-            WaitResult::Resize(width, height) => {
+            WaitResult::Resize(mut width, height) => {
+                if args.fullwidth {
+                    width /= 2;
+                }
                 execute!(stdout, MoveTo(0, 0), Clear(ClearType::All))?;
                 board = board.resize(width, height);
             }

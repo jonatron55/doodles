@@ -135,12 +135,6 @@ fn main() -> IoResult<()> {
         let (mut width, mut height) = terminal::size()?;
         let random_state = RandomState::new();
 
-        let bias = BiasMode::Image(Image::new_checkered(
-            width as usize,
-            height as usize,
-            (12, 6),
-        ));
-
         let maze_style = args
             .maze_style
             .unwrap_or_else(|| MazeRenderArg::choose(&mut rand));
@@ -158,6 +152,18 @@ fn main() -> IoResult<()> {
         height = (height - 1) / 2;
 
         let mut maze = Maze::new(width as usize, height as usize);
+
+        let bias = match rand.random_range(0..4) {
+            0 => BiasMode::Uniform(0.5),
+            1 => BiasMode::Uniform(0.66),
+            2 => BiasMode::Uniform(0.25),
+            3 => BiasMode::Image(Image::new_checkered(
+                width as usize,
+                height as usize,
+                (width as usize / 6, height as usize / 4),
+            )),
+            _ => unreachable!(),
+        };
 
         'build: loop {
             if !maze.build_next(&mut rand, &bias) {

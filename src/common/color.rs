@@ -10,7 +10,7 @@ use clap::{ValueEnum, builder::PossibleValue};
 use crossterm::style::{Color as TermColor, ContentStyle};
 use rand::Rng;
 
-use crate::common::term::{BOLD_STYLES, DIM_STYLES, STYLES};
+use crate::common::term::{BOLD_STYLES, DIM_STYLES, MEDIUM_STYLES, STYLES};
 
 /// A primary terminal color.
 ///
@@ -35,6 +35,19 @@ impl Color {
         Color::from(value)
     }
 
+    /// Returns a complementary color.
+    pub fn complement(&self) -> Self {
+        match self {
+            Color::Red => Color::Cyan,
+            Color::Green => Color::Magenta,
+            Color::Yellow => Color::Blue,
+            Color::Blue => Color::Yellow,
+            Color::Magenta => Color::Green,
+            Color::Cyan => Color::Red,
+            Color::White | Color::Black => *self,
+        }
+    }
+
     /// Returns the corresponding [`ContentStyle`] from [`STYLES`].
     pub fn style(&self) -> ContentStyle {
         STYLES[*self as usize]
@@ -43,6 +56,11 @@ impl Color {
     /// Returns the corresponding bold [`ContentStyle`] from [`BOLD_STYLES`].
     pub fn bold_style(&self) -> ContentStyle {
         BOLD_STYLES[*self as usize]
+    }
+
+    /// Returns the corresponding dim [`ContentStyle`] from [`MEDIUM_STYLES`].
+    pub fn medium_style(&self) -> ContentStyle {
+        MEDIUM_STYLES[*self as usize]
     }
 
     /// Returns the corresponding dim [`ContentStyle`] from [`DIM_STYLES`].

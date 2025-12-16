@@ -165,9 +165,60 @@ pub const STYLES: [ContentStyle; 8] = [
     },
 ];
 
+pub const MEDIUM_STYLES: [ContentStyle; 8] = [
+    ContentStyle {
+        foreground_color: Some(Color::DarkGrey),
+        background_color: None,
+        underline_color: None,
+        attributes: Attributes::none(),
+    },
+    ContentStyle {
+        foreground_color: Some(Color::DarkRed),
+        background_color: None,
+        underline_color: None,
+        attributes: Attributes::none(),
+    },
+    ContentStyle {
+        foreground_color: Some(Color::DarkGreen),
+        background_color: None,
+        underline_color: None,
+        attributes: Attributes::none(),
+    },
+    ContentStyle {
+        foreground_color: Some(Color::DarkYellow),
+        background_color: None,
+        underline_color: None,
+        attributes: Attributes::none(),
+    },
+    ContentStyle {
+        foreground_color: Some(Color::DarkBlue),
+        background_color: None,
+        underline_color: None,
+        attributes: Attributes::none(),
+    },
+    ContentStyle {
+        foreground_color: Some(Color::DarkMagenta),
+        background_color: None,
+        underline_color: None,
+        attributes: Attributes::none(),
+    },
+    ContentStyle {
+        foreground_color: Some(Color::DarkCyan),
+        background_color: None,
+        underline_color: None,
+        attributes: Attributes::none(),
+    },
+    ContentStyle {
+        foreground_color: Some(Color::Grey),
+        background_color: None,
+        underline_color: None,
+        attributes: Attributes::none(),
+    },
+];
+
 pub const DIM_STYLES: [ContentStyle; 8] = [
     ContentStyle {
-        foreground_color: Some(Color::Black),
+        foreground_color: Some(Color::DarkGrey),
         background_color: None,
         underline_color: None,
         attributes: Attributes::none().with(Attribute::Dim),
