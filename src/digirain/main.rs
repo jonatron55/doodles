@@ -20,6 +20,7 @@ use doodles::{
     common::{
         color::Color,
         term::{CommonArgs, WaitResult, cleanup_term, setup_term},
+        vec::UVec2,
     },
     error,
 };
@@ -101,9 +102,9 @@ fn main() -> IoResult<()> {
 
     let mut frame = 0;
 
-    let (mut width, height) = terminal::size()?;
+    let mut size: UVec2 = terminal::size()?.into();
     if args.fullwidth {
-        width /= 2;
+        size.x /= 2;
     }
 
     let mut rand = rand::rng();
@@ -125,7 +126,7 @@ fn main() -> IoResult<()> {
         None => None,
     };
 
-    let mut board = Board::new(width as usize, height as usize, alphabet.as_deref());
+    let mut board = Board::new(size, alphabet.as_deref());
     let color = args.color.unwrap_or_else(|| ColorArg::choose(&mut rand));
 
     loop {
@@ -142,12 +143,12 @@ fn main() -> IoResult<()> {
         board.render(&args)?;
 
         match args.common.wait()? {
-            WaitResult::Resize(mut width, height) => {
+            WaitResult::Resize(mut size) => {
                 if args.fullwidth {
-                    width /= 2;
+                    size.x /= 2;
                 }
                 execute!(stdout, MoveTo(0, 0), Clear(ClearType::All))?;
-                board = board.resize(width, height);
+                board = board.resize(size);
             }
             WaitResult::Continue => continue,
             WaitResult::Exit => break,

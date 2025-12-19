@@ -19,6 +19,8 @@ use crossterm::{
     },
 };
 
+use crate::common::vec::{UVec2, uvec2};
+
 #[derive(Parser, Debug)]
 pub struct CommonArgs {
     /// Number of iterations to run.
@@ -57,7 +59,7 @@ pub enum WaitResult {
     Continue,
 
     /// The screen was resized and the animation should adjust accordingly.
-    Resize(usize, usize),
+    Resize(UVec2),
 
     /// The user requested to exit the program. The animation should halt.
     Exit,
@@ -380,9 +382,10 @@ impl CommonArgs {
                     Ok(Some(WaitResult::Exit))
                 }
                 Event::Key(ev) if ev.is_press() => Ok(Some(WaitResult::Continue)),
-                Event::Resize(width, height) => {
-                    Ok(Some(WaitResult::Resize(width as usize, height as usize)))
-                }
+                Event::Resize(width, height) => Ok(Some(WaitResult::Resize(uvec2(
+                    width as usize,
+                    height as usize,
+                )))),
                 _ => Ok(None),
             }
         } else {

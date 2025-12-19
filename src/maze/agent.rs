@@ -12,6 +12,7 @@ use crossterm::{cursor::MoveTo, queue, style::PrintStyledContent};
 use doodles::common::{
     color::Color,
     dir::{Direction, Directions},
+    vec::{UVec2, uvec2},
 };
 use rand::Rng;
 
@@ -26,7 +27,7 @@ pub struct Agent<'a> {
     ///
     /// This is in maze cell coordinates, not terminal character coordinates. The rendering position of the agent
     /// depends on whether it is in the center of a cell or moving between cells.
-    position: (usize, usize),
+    position: UVec2,
 
     /// Current state.
     state: State,
@@ -38,7 +39,7 @@ pub struct Agent<'a> {
     path: Vec<Junction>,
 
     /// Set of closed (already visited) positions.
-    closed: HashSet<(usize, usize)>,
+    closed: HashSet<UVec2>,
 
     /// Current facing direction.
     dir: Direction,
@@ -87,14 +88,14 @@ impl<'a> Agent<'a> {
     pub fn new(maze: &'a Maze, color: Color) -> Self {
         Agent {
             maze,
-            position: (0, 0),
+            position: UVec2::zero(),
             state: State::Thinking,
             color,
             path: vec![Junction {
-                open: maze.walls(0, 0).complement(),
+                open: maze.walls(UVec2::zero()).complement(),
                 from: None,
             }],
-            closed: HashSet::from([(0, 0)]),
+            closed: HashSet::from([UVec2::zero()]),
             dir: Direction::East,
         }
     }
@@ -132,19 +133,19 @@ impl<'a> Agent<'a> {
             State::Moving(dir) => {
                 // We are moving in the given direction. Update our position accordingly and prepare to think again.
                 self.closed.insert(self.position);
-                let (x, y) = dir.move_point(self.position);
-                let (w, h) = self.maze.size();
+                let position = dir.move_point(self.position);
+                let size = self.maze.size();
 
-                if x >= w || y >= h {
+                if position.x >= size.x || position.y >= size.y {
                     // We found the exit!
                     self.state = State::Exited;
                 } else {
                     // Move into the new cell.
-                    self.position = (x, y);
+                    self.position = position;
 
-                    if !self.closed.contains(&(x, y)) {
+                    if !self.closed.contains(&position) {
                         // We've never been here before; add a new junction to the stack.
-                        let mut open = self.maze.walls(x, y).complement();
+                        let mut open = self.maze.walls(position).complement();
                         let from = dir.opposite();
                         open.remove(from.into());
                         self.path.push(Junction {
@@ -164,7 +165,7 @@ impl<'a> Agent<'a> {
 
     /// Render the agent at its current position.
     pub fn render(&self, style: &RenderStyle) -> IoResult<()> {
-        let (x, y) = self.render_position();
+        let UVec2 { x, y } = self.render_position();
 
         let s = if matches!(self.state, State::Stuck) {
             "×"
@@ -198,8 +199,8 @@ impl<'a> Agent<'a> {
     ///
     /// If the agent is in the center of a cell, this will be the center of that cell. If the agent is moving between
     /// cells, this will be the position between the two cells in the direction of movement.
-    pub fn render_position(&self) -> (usize, usize) {
-        let (x, y) = self.position;
+    pub fn render_position(&self) -> UVec2 {
+        let UVec2 { x, y } = self.position;
 
         // Each cell occupies a 2x2 character block, and there is a 1-character border around the maze.
         let x = x * 2 + 1;
@@ -208,15 +209,15 @@ impl<'a> Agent<'a> {
         match self.state {
             State::Moving(dir) => {
                 // Adjust the rendering position in the direction of movement, which will place it between cells.
-                dir.move_point((x, y))
+                dir.move_point(uvec2(x, y))
             }
             State::Exited => {
                 // Move the rendering position just outside the maze exit.
-                (x + 1, y)
+                uvec2(x + 1, y)
             }
             State::Thinking | State::Stuck => {
                 // Agent is stationary in the center of the cell.
-                (x, y)
+                uvec2(x, y)
             }
         }
     }

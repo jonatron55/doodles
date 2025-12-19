@@ -8,6 +8,7 @@ use crossterm::terminal;
 use doodles::common::{
     color::Color,
     term::{CommonArgs, WaitResult, cleanup_term, setup_term},
+    vec::UVec2,
 };
 use rand::{random_bool, seq::SliceRandom};
 
@@ -74,13 +75,12 @@ fn main() -> IoResult<()> {
         _ => {}
     }
 
-    let (width, height) = terminal::size()?;
-    let (mut width, mut height) = (width as usize, height as usize);
+    let mut size: UVec2 = terminal::size()?.into();
 
     let mut rand = rand::rng();
 
-    let mut actual: Vec<usize> = (0..width).map(|x| 8 * x * height / width).collect();
-    let mut displayed: Vec<usize> = vec![0; width];
+    let mut actual: Vec<usize> = (0..size.x).map(|x| 8 * x * size.y / size.x).collect();
+    let mut displayed: Vec<usize> = vec![0; size.x];
 
     let mut iteration = 0;
 
@@ -116,26 +116,18 @@ fn main() -> IoResult<()> {
         };
 
         while !match &mut sort_state {
-            SortState::Bubble(state) => step_bubble(&mut actual, width, ordering, state),
+            SortState::Bubble(state) => step_bubble(&mut actual, size.x, ordering, state),
             SortState::QSort(state) => step_qsort(&mut actual, ordering, state),
         } {
             while displayed != actual {
-                renderer::render(
-                    &mut displayed,
-                    &actual,
-                    width,
-                    height,
-                    colors,
-                    style,
-                    ordering,
-                )?;
+                renderer::render(&mut displayed, &actual, size, colors, style, ordering)?;
 
                 match args.common.wait()? {
                     WaitResult::Continue => {}
-                    WaitResult::Resize(new_width, new_height) => {
-                        (width, height) = (new_width, new_height);
-                        actual = (0..width).map(|x| 8 * x * height / width).collect();
-                        displayed = vec![0; width];
+                    WaitResult::Resize(new_size) => {
+                        size = new_size;
+                        actual = (0..size.x).map(|x| 8 * x * size.y / size.x).collect();
+                        displayed = vec![0; size.x];
                         continue 'outer;
                     }
                     WaitResult::Exit => break 'outer,

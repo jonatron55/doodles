@@ -2,8 +2,10 @@
 // Licensed under the MIT-0 license.
 
 use std::{
+    fs,
     hash::RandomState,
-    io::{Result as IoResult, stdout},
+    io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, stdout},
+    path::PathBuf,
     str::FromStr,
 };
 
@@ -16,6 +18,7 @@ use doodles::common::{
     color::Color,
     image::Image,
     term::{CommonArgs, WaitResult, cleanup_term, setup_term},
+    vec::{UVec2, uvec2},
 };
 use rand::Rng;
 use rand::seq::SliceRandom;
@@ -51,6 +54,9 @@ pub struct Args {
     /// Number of agents.
     #[clap(short = 'N', long, default_value_t = 6)]
     agents: usize,
+
+    #[clap(flatten)]
+    bias: BiasArg,
 }
 
 /// Maze render style argument.
@@ -74,6 +80,29 @@ enum MazeRenderArg {
 
     /// Hedge-style walls.
     Hedge = 5,
+}
+
+/// Maze bias style argument.
+#[derive(Parser, Clone, Debug)]
+pub struct BiasArg {
+    /// Passages are uniformly biased in one direction.
+    ///
+    /// A value of 0 causes a completely horizontal bias, and a value of 1 causes a completely vertical bias. A value of
+    /// 0.5 results in no bias.
+    #[clap(short = 'b', long)]
+    pub bias: Option<f64>,
+
+    /// Image file to use for biasing passage generation.
+    ///
+    /// The brightness of each pixel influences the direction of passages in the corresponding maze cell. Darker pixels
+    /// favor horizontal passages, while lighter pixels favor vertical passages.
+    ///
+    /// This argument may specify a path to an image in a standard format, or one of the predefined patterns:
+    ///
+    /// - `checkered(width,height)`: A width by height checkered pattern.
+    /// - `concentric(width)`: Concentric rings of width `width`.
+    #[clap(short = 'I', long, conflicts_with = "bias")]
+    pub image: Option<PathBuf>,
 }
 
 /// Predefined maze render styles corresponding to `MazeRenderArg`.
@@ -132,7 +161,7 @@ fn main() -> IoResult<()> {
 
         execute!(stdout(), Clear(ClearType::All))?;
 
-        let (mut width, mut height) = terminal::size()?;
+        let mut size = UVec2::from(terminal::size()?);
         let random_state = RandomState::new();
 
         let maze_style = args
@@ -148,21 +177,43 @@ fn main() -> IoResult<()> {
             .unwrap_or_else(|| AgentRenderStyle::choose(&mut rand));
 
         // Calculate maze dimensions based on terminal size. Each cell is 2x2 characters, plus a 1-character border.
-        width = (width - 1) / 2;
-        height = (height - 1) / 2;
+        size = (size - UVec2::one()) / 2;
+        let mut maze = Maze::new(size);
 
-        let mut maze = Maze::new(width as usize, height as usize);
-
-        let bias = match rand.random_range(0..4) {
-            0 => BiasMode::Uniform(0.5),
-            1 => BiasMode::Uniform(0.66),
-            2 => BiasMode::Uniform(0.25),
-            3 => BiasMode::Image(Image::new_checkered(
-                width as usize,
-                height as usize,
-                (width as usize / 6, height as usize / 4),
-            )),
-            _ => unreachable!(),
+        let bias = if let Some(bias_image_path) = &args.bias.image {
+            if fs::exists(bias_image_path)? {
+                unimplemented!()
+            } else {
+                let s = bias_image_path.to_string_lossy();
+                if s.starts_with("checkered")
+                    && let Ok(check_size) = s["checkered".len()..].parse::<UVec2>()
+                {
+                    BiasMode::Image(Image::new_checkered(size, check_size))
+                } else if s.starts_with("concentric")
+                    && let Ok(ring_width) = s["concentric".len()..].parse::<usize>()
+                {
+                    BiasMode::Image(Image::new_concentric(size, ring_width))
+                } else {
+                    cleanup_term()?;
+                    eprintln!(
+                        "Bias image path '{}' does not exist.",
+                        bias_image_path.display()
+                    );
+                    return Err(IoError::from(IoErrorKind::NotFound));
+                }
+            }
+        } else if let Some(bias_value) = args.bias.bias {
+            BiasMode::Uniform(bias_value.clamp(0.0, 1.0))
+        } else {
+            if rand.random_bool(0.5) {
+                match rand.random_range(0..3) {
+                    0 => BiasMode::Uniform(0.2),
+                    1 => BiasMode::Uniform(0.7),
+                    _ => BiasMode::Image(Image::new_checkered(size, uvec2(size.x / 5, size.y / 3))),
+                }
+            } else {
+                BiasMode::Uniform(0.5)
+            }
         };
 
         'build: loop {
@@ -174,7 +225,7 @@ fn main() -> IoResult<()> {
 
             match args.common.wait()? {
                 WaitResult::Continue => {}
-                WaitResult::Resize(_, _) => continue 'outer,
+                WaitResult::Resize(_) => continue 'outer,
                 WaitResult::Exit => break 'outer,
             }
         }
@@ -210,7 +261,7 @@ fn main() -> IoResult<()> {
 
             match args.common.wait()? {
                 WaitResult::Continue => {}
-                WaitResult::Resize(_, _) => continue 'outer,
+                WaitResult::Resize(_) => continue 'outer,
                 WaitResult::Exit => break 'outer,
             }
         }

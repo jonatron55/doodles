@@ -4,7 +4,10 @@
 use bitflags::bitflags;
 use rand::{Rng, seq::IteratorRandom};
 
-use crate::common::borders::*;
+use crate::common::{
+    borders::*,
+    vec::{UVec2, uvec2},
+};
 
 /// A single cardinal direction.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -78,12 +81,13 @@ impl Direction {
     /// - [`Direction::West`] will decrease *x*
     ///
     /// The coordinates are not checked for overflow or underflow.
-    pub fn move_point(&self, (x, y): (usize, usize)) -> (usize, usize) {
+    pub fn move_point(&self, point: UVec2) -> UVec2 {
+        let UVec2 { x, y } = point;
         match self {
-            Direction::North => (x, y - 1),
-            Direction::East => (x + 1, y),
-            Direction::South => (x, y + 1),
-            Direction::West => (x - 1, y),
+            Direction::North => uvec2(x, y - 1),
+            Direction::East => uvec2(x + 1, y),
+            Direction::South => uvec2(x, y + 1),
+            Direction::West => uvec2(x - 1, y),
         }
     }
 
@@ -98,16 +102,14 @@ impl Direction {
     ///
     /// The coordinates are checked against the given width and height, and `None` is returned
     /// if the move would exceed the bounds.
-    pub fn move_point_within(
-        &self,
-        (x, y): (usize, usize),
-        (w, h): (usize, usize),
-    ) -> Option<(usize, usize)> {
+    pub fn move_point_within(&self, point: UVec2, bounds: UVec2) -> Option<UVec2> {
+        let UVec2 { x, y } = point;
+        let UVec2 { x: w, y: h } = bounds;
         match self {
-            Direction::North if y > 0 => Some((x, y - 1)),
-            Direction::East if x + 1 < w => Some((x + 1, y)),
-            Direction::South if y + 1 < h => Some((x, y + 1)),
-            Direction::West if x > 0 => Some((x - 1, y)),
+            Direction::North if y > 0 => Some(uvec2(x, y - 1)),
+            Direction::East if x + 1 < w => Some(uvec2(x + 1, y)),
+            Direction::South if y + 1 < h => Some(uvec2(x, y + 1)),
+            Direction::West if x > 0 => Some(uvec2(x - 1, y)),
             _ => None,
         }
     }

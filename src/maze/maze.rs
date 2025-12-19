@@ -19,6 +19,7 @@ use doodles::common::{
     color::Color,
     dir::{Direction, Directions},
     image::Image,
+    vec::{UVec2, uvec2},
 };
 use rand::Rng;
 
@@ -39,11 +40,7 @@ use crate::agent::{Agent, RenderStyle as AgentRenderStyle};
 /// function [`Maze::build_next`] should be called repeatedly until it returns `false`, indicating that the maze is
 /// fully generated.
 pub struct Maze {
-    /// Total number of cells in the horizontal direction.
-    width: usize,
-
-    /// Total number of cells in the vertical direction.
-    height: usize,
+    size: UVec2,
 
     /// Cells in row-major order.
     cells: Vec<Cell>,
@@ -86,10 +83,10 @@ pub enum BiasMode {
 /// A cell that has been encountered during maze generation but not yet visited.
 struct OpenCell {
     /// Position of the cell.
-    cell: (usize, usize),
+    cell: UVec2,
 
     /// Position from which this cell was reached.
-    from: (usize, usize),
+    from: UVec2,
 }
 
 const HEDGE_CHARS: [char; 51] = [
@@ -117,25 +114,24 @@ bitflags! {
 
 impl Maze {
     /// Create a new, ungenerated maze of the given size.
-    pub fn new(width: usize, height: usize) -> Self {
-        let mut cells = vec![Cell::default(); width * height];
-        cells[width * height - 1].remove(Cell::WALL_EAST); // Exit
+    pub fn new(size: UVec2) -> Self {
+        let mut cells = vec![Cell::default(); size.x * size.y];
+        cells[size.x * size.y - 1].remove(Cell::WALL_EAST); // Exit
 
         Maze {
-            width,
-            height,
+            size,
             cells,
             bitmap: RefCell::new(None),
             open: vec![OpenCell {
-                cell: (0, 0),
-                from: (0, 0),
+                cell: uvec2(0, 0),
+                from: uvec2(0, 0),
             }],
         }
     }
 
     /// Compute all walls present at the given cell.
-    pub fn walls(&self, x: usize, y: usize) -> Directions {
-        let cell = self.cells[self.cell_index(x, y)];
+    pub fn walls(&self, p: UVec2) -> Directions {
+        let cell = self.cells[self.cell_index(p)];
         let mut walls = Directions::empty();
 
         // East and South walls are stored by the cell itself.
@@ -148,11 +144,11 @@ impl Maze {
         }
 
         // North and West walls are implied by neighboring cells or the maze border.
-        if x == 0 || self.cells[self.cell_index(x - 1, y)].contains(Cell::WALL_EAST) {
+        if p.x == 0 || self.cells[self.cell_index(uvec2(p.x - 1, p.y))].contains(Cell::WALL_EAST) {
             walls |= Directions::WEST;
         }
 
-        if y == 0 || self.cells[self.cell_index(x, y - 1)].contains(Cell::WALL_SOUTH) {
+        if p.y == 0 || self.cells[self.cell_index(uvec2(p.x, p.y - 1))].contains(Cell::WALL_SOUTH) {
             walls |= Directions::NORTH;
         }
 
@@ -165,20 +161,23 @@ impl Maze {
     pub fn build_next<R: Rng>(&mut self, rand: &mut R, bias: &BiasMode) -> bool {
         // Get the next unvisited cell.
         let Some(OpenCell {
-            cell: (x, y),
-            from: (from_x, from_y),
+            cell: UVec2 { x, y },
+            from: UVec2 {
+                x: from_x,
+                y: from_y,
+            },
         }) = self.pop_unvisited()
         else {
             // No more open cells; maze generation is complete.
             return false;
         };
 
-        let current = self.cell_index(x, y);
+        let current = self.cell_index(uvec2(x, y));
 
         // Mark cell as visited.
         self.cells[current].insert(Cell::VISITED);
 
-        let from = self.cell_index(from_x, from_y);
+        let from = self.cell_index(uvec2(from_x, from_y));
 
         // Remove wall between current and previous cell.
         if x < from_x {
@@ -193,22 +192,25 @@ impl Maze {
 
         // Push unvisited neighbors in random order.
         let horz = if rand.random_bool(0.5) {
-            [Direction::East, Direction::West]
+            (Direction::East, Direction::West)
         } else {
-            [Direction::West, Direction::East]
+            (Direction::West, Direction::East)
         };
         let vert = if rand.random_bool(0.5) {
-            [Direction::North, Direction::South]
+            (Direction::North, Direction::South)
         } else {
-            [Direction::South, Direction::North]
+            (Direction::South, Direction::North)
         };
 
         let bias = match bias {
             BiasMode::Uniform(b) => *b,
             BiasMode::Image(img) => {
-                let (img_width, img_height) = img.size();
+                let UVec2 {
+                    x: img_width,
+                    y: img_height,
+                } = img.size();
                 if x < img_width && y < img_height {
-                    img.pixel(x, y) as f64
+                    img.pixel(uvec2(x, y))
                 } else {
                     0.5
                 }
@@ -216,22 +218,22 @@ impl Maze {
         };
 
         let dirs = if rand.random_bool(bias) {
-            [vert[0], vert[1], horz[0], horz[1]]
+            [horz.0, horz.1, vert.0, vert.1]
         } else {
-            [horz[0], horz[1], vert[0], vert[1]]
+            [vert.0, vert.1, horz.0, horz.1]
         };
 
         for &dir in &dirs {
-            let Some((nx, ny)) = dir.move_point_within((x, y), (self.width, self.height)) else {
+            let Some(n) = dir.move_point_within(uvec2(x, y), self.size) else {
                 continue;
             };
 
-            let next = self.cell_index(nx, ny);
+            let next = self.cell_index(n);
             let neighbor = self.cells[next];
             if !neighbor.contains(Cell::VISITED) {
                 self.open.push(OpenCell {
-                    cell: (nx, ny),
-                    from: (x, y),
+                    cell: n,
+                    from: uvec2(x, y),
                 });
             }
         }
@@ -257,26 +259,26 @@ impl Maze {
         self.render_bitmap();
         let bmp = self.bitmap.borrow();
         let bmp = bmp.as_ref().unwrap();
-        let (bmp_width, bmp_height) = self.bitmap_size();
+        let bmp_size = self.bitmap_size();
 
-        for y in 0..bmp_height {
+        for y in 0..bmp_size.y {
             queue!(stdout, MoveTo(0, y as u16),)?;
-            for x in 0..bmp_width {
-                let idx = y * bmp_width + x;
+            for x in 0..bmp_size.x {
+                let idx = y * bmp_size.x + x;
 
-                if let Some(agent) = agents.iter().find(|a| a.render_position() == (x, y)) {
+                if let Some(agent) = agents.iter().find(|a| a.render_position() == uvec2(x, y)) {
                     agent.render(agent_style)?;
                     continue;
                 }
 
                 if !bmp[idx] {
-                    let (cell_x, cell_y) = ((x.wrapping_sub(1)) / 2, (y.wrapping_sub(1)) / 2);
+                    let cell = uvec2((x.wrapping_sub(1)) / 2, (y.wrapping_sub(1)) / 2);
                     if (x.wrapping_sub(1)) % 2 == 0
                         && (y.wrapping_sub(1)) % 2 == 0
-                        && cell_x < self.width
-                        && cell_y < self.height
+                        && cell.x < self.size.x
+                        && cell.y < self.size.y
                     {
-                        let cell = self.cells[self.cell_index(cell_x, cell_y)];
+                        let cell = self.cells[self.cell_index(cell)];
                         if !cell.contains(Cell::VISITED) {
                             let style = &style.color.dim_style();
                             queue!(stdout, PrintStyledContent(style.apply('∎')))?;
@@ -290,21 +292,21 @@ impl Maze {
 
                 let mut dirs = Directions::empty();
 
-                if y > 0 && bmp[(y - 1) * bmp_width + x] {
+                if y > 0 && bmp[(y - 1) * bmp_size.x + x] {
                     dirs |= Directions::NORTH;
                 }
-                if y + 1 < bmp_height && bmp[(y + 1) * bmp_width + x] {
+                if y + 1 < bmp_size.y && bmp[(y + 1) * bmp_size.x + x] {
                     dirs |= Directions::SOUTH;
                 }
-                if x > 0 && bmp[y * bmp_width + (x - 1)] {
+                if x > 0 && bmp[y * bmp_size.x + (x - 1)] {
                     dirs |= Directions::WEST;
                 }
-                if x + 1 < bmp_width && bmp[y * bmp_width + (x + 1)] {
+                if x + 1 < bmp_size.x && bmp[y * bmp_size.x + (x + 1)] {
                     dirs |= Directions::EAST;
                 }
 
-                let x_border = x == 0 || x + 1 == bmp_width;
-                let y_border = y == 0 || y + 1 == bmp_height;
+                let x_border = x == 0 || x + 1 == bmp_size.x;
+                let y_border = y == 0 || y + 1 == bmp_size.y;
 
                 let mut print_hedge = |x: usize, y: usize| -> IoResult<()> {
                     let hash = {
@@ -375,8 +377,8 @@ impl Maze {
     }
 
     /// Get the size of the maze in cells.
-    pub fn size(&self) -> (usize, usize) {
-        (self.width, self.height)
+    pub fn size(&self) -> UVec2 {
+        self.size
     }
 
     /// Render the maze into a bitmap for efficient repeated rendering.
@@ -385,12 +387,12 @@ impl Maze {
             return;
         }
 
-        let (bmp_width, bmp_height) = self.bitmap_size();
-        let mut bitmap = BitVec::repeat(false, bmp_width * bmp_height);
+        let bmp_size = self.bitmap_size();
+        let mut bitmap = BitVec::repeat(false, bmp_size.x * bmp_size.y);
 
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let cell = self.cells[self.cell_index(x, y)];
+        for y in 0..self.size.y {
+            for x in 0..self.size.x {
+                let cell = self.cells[self.cell_index(uvec2(x, y))];
                 let visited = cell.contains(Cell::VISITED);
 
                 let bx = x * 2 + 1;
@@ -398,44 +400,48 @@ impl Maze {
 
                 if visited {
                     // Set diagonal corners
-                    bitmap.set((by - 1) * bmp_width + (bx - 1), true);
-                    bitmap.set((by - 1) * bmp_width + (bx + 1), true);
-                    bitmap.set((by + 1) * bmp_width + (bx + 1), true);
-                    bitmap.set((by + 1) * bmp_width + (bx - 1), true);
+                    bitmap.set((by - 1) * bmp_size.x + (bx - 1), true);
+                    bitmap.set((by - 1) * bmp_size.x + (bx + 1), true);
+                    bitmap.set((by + 1) * bmp_size.x + (bx + 1), true);
+                    bitmap.set((by + 1) * bmp_size.x + (bx - 1), true);
 
                     // Set walls as needed
                     if cell.contains(Cell::WALL_EAST) {
-                        bitmap.set(by * bmp_width + (bx + 1), true);
+                        bitmap.set(by * bmp_size.x + (bx + 1), true);
                     }
 
                     if cell.contains(Cell::WALL_SOUTH) {
-                        bitmap.set((by + 1) * bmp_width + bx, true);
+                        bitmap.set((by + 1) * bmp_size.x + bx, true);
                     }
 
-                    if x == 0 || self.cells[self.cell_index(x - 1, y)].contains(Cell::WALL_EAST) {
-                        bitmap.set(by * bmp_width + (bx - 1), true);
+                    if x == 0
+                        || self.cells[self.cell_index(uvec2(x - 1, y))].contains(Cell::WALL_EAST)
+                    {
+                        bitmap.set(by * bmp_size.x + (bx - 1), true);
                     }
 
-                    if y == 0 || self.cells[self.cell_index(x, y - 1)].contains(Cell::WALL_SOUTH) {
-                        bitmap.set((by - 1) * bmp_width + bx, true);
+                    if y == 0
+                        || self.cells[self.cell_index(uvec2(x, y - 1))].contains(Cell::WALL_SOUTH)
+                    {
+                        bitmap.set((by - 1) * bmp_size.x + bx, true);
                     }
                 }
             }
         }
 
-        bitmap.set(bmp_width, false); // Entrance
+        bitmap.set(bmp_size.x, false); // Entrance
 
         self.bitmap.replace(Some(bitmap));
     }
 
     /// Get the linear index of a cell at the given coordinates.
-    fn cell_index(&self, x: usize, y: usize) -> usize {
-        y * self.width + x
+    fn cell_index(&self, p: UVec2) -> usize {
+        p.y * self.size.x + p.x
     }
 
     /// Gets the total rendered bitmap size in characters.
-    fn bitmap_size(&self) -> (usize, usize) {
-        (self.width * 2 + 1, self.height * 2 + 1)
+    fn bitmap_size(&self) -> UVec2 {
+        uvec2(self.size.x * 2 + 1, self.size.y * 2 + 1)
     }
 
     /// Pop the next unvisited open cell from the stack, skipping any that have already been visited.
@@ -443,8 +449,8 @@ impl Maze {
     /// Returns `None` if there are no unvisited open cells remaining (i.e., maze generation is complete).
     fn pop_unvisited(&mut self) -> Option<OpenCell> {
         while let Some(open_cell) = self.open.pop() {
-            let (x, y) = open_cell.cell;
-            let idx = self.cell_index(x, y);
+            let p = open_cell.cell;
+            let idx = self.cell_index(p);
             if !self.cells[idx].contains(Cell::VISITED) {
                 return Some(open_cell);
             }

@@ -8,7 +8,7 @@ use crossterm::{
     queue,
     style::{Print, PrintStyledContent},
 };
-use doodles::common::{Lerp, color::Color};
+use doodles::common::{color::Color, math::Lerp, vec::UVec2};
 use rand::{
     Rng,
     distr::{Bernoulli, Distribution},
@@ -22,11 +22,8 @@ const DEFAULT_ALPHABET: &str = include_str!("alphabet.txt");
 
 /// A board of cells for the Digital Rain effect.
 pub struct Board {
-    /// Width of the board in characters.
-    width: usize,
-
-    /// Height of the board in characters.
-    height: usize,
+    /// Dimensions of the board in characters.
+    size: UVec2,
 
     /// Double buffer of cells (each in row-major order).
     buffers: (Vec<Cell>, Vec<Cell>),
@@ -56,7 +53,7 @@ pub struct Cell {
 
 impl Board {
     /// Creates a new empty board with the given dimensions and optional alphabet.
-    pub fn new(width: usize, height: usize, alphabet: Option<&str>) -> Self {
+    pub fn new(size: UVec2, alphabet: Option<&str>) -> Self {
         let alphabet = alphabet
             .unwrap_or(DEFAULT_ALPHABET)
             .chars()
@@ -64,13 +61,12 @@ impl Board {
             .collect::<Vec<char>>();
 
         let buffers = (
-            vec![Cell::default(); width * height],
-            vec![Cell::default(); width * height],
+            vec![Cell::default(); size.x * size.y],
+            vec![Cell::default(); size.x * size.y],
         );
 
         Self {
-            width,
-            height,
+            size,
             buffers,
             alphabet,
         }
@@ -78,19 +74,18 @@ impl Board {
 
     /// Resize the board to new dimensions. Existing cell data will be preserved where possible and new cells will be
     /// initially empty.
-    pub fn resize(self, new_width: usize, new_height: usize) -> Self {
+    pub fn resize(self, new_size: UVec2) -> Self {
         let mut new_board = Board {
-            width: new_width,
-            height: new_height,
+            size: new_size,
             alphabet: self.alphabet.clone(),
             buffers: (
-                vec![Cell::default(); new_width * new_height],
-                vec![Cell::default(); new_width * new_height],
+                vec![Cell::default(); new_size.x * new_size.y],
+                vec![Cell::default(); new_size.x * new_size.y],
             ),
         };
 
-        for y in 0..new_height.min(self.height) {
-            for x in 0..new_width.min(self.width) {
+        for y in 0..new_size.y.min(self.size.y) {
+            for x in 0..new_size.x.min(self.size.x) {
                 let src = self.cell_index(x, y);
                 let dst = new_board.cell_index(x, y);
                 new_board.buffers.0[dst] = self.buffers.0[src].clone();
@@ -127,8 +122,8 @@ impl Board {
         // never continue).
         let trail = Bernoulli::new(((args.max_trail - args.min_trail) as f64).recip()).unwrap();
 
-        for y in 0..self.height {
-            for x in 0..self.width {
+        for y in 0..self.size.y {
+            for x in 0..self.size.x {
                 let index = self.cell_index(x, y);
 
                 if self.buffers.0[index].is_alive(args) {
@@ -180,8 +175,7 @@ impl Board {
         if frame < args.warmup || self.buffers.1.iter().any(|cell| cell.is_alive(args)) {
             // There are still living cells; return the new board with buffers swapped.
             Some(Self {
-                width: self.width,
-                height: self.height,
+                size: self.size,
                 buffers: (self.buffers.1, self.buffers.0),
                 alphabet: self.alphabet,
             })
@@ -194,10 +188,10 @@ impl Board {
     pub fn render(&self, args: &Args) -> IoResult<()> {
         let mut stdout = stdout();
 
-        for y in 0..self.height {
+        for y in 0..self.size.y {
             queue!(stdout, MoveTo(0, y as u16))?;
 
-            for x in 0..self.width {
+            for x in 0..self.size.x {
                 let cell = &self.buffers.0[self.cell_index(x, y)];
                 if cell.is_alive(args) {
                     // Display head cells in bold and trail cells in dim.
@@ -221,7 +215,7 @@ impl Board {
 
     /// Returns the linear index of the cell at the given coordinates, wrapping at boundaries.
     fn cell_index(&self, x: usize, y: usize) -> usize {
-        y % self.height * self.width + x % self.width
+        y % self.size.y * self.size.x + x % self.size.x
     }
 }
 

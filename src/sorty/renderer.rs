@@ -13,6 +13,7 @@ use crossterm::{cursor::MoveTo, queue, style::PrintStyledContent};
 use doodles::common::{
     color::Color,
     term::{DIM_STYLES, STYLES},
+    vec::UVec2,
 };
 use rand::Rng;
 
@@ -34,8 +35,7 @@ const OCTAL_GLYPHS: [&str; 9] = ["0", "1", "2", "3", "4", "5", "6", "7", "8"];
 pub fn render(
     displayed: &mut [usize],
     actual: &[usize],
-    width: usize,
-    height: usize,
+    size: UVec2,
     colors: [Color; 2],
     style: RenderStyle,
     ordering: Ordering,
@@ -43,7 +43,7 @@ pub fn render(
     let mut stdout = stdout();
 
     let mut converged = true;
-    let mut changed = bitvec![0; width];
+    let mut changed = bitvec![0; size.x];
 
     let glyphs = match style {
         RenderStyle::Block => BLOCK_GLYPHS,
@@ -55,7 +55,7 @@ pub fn render(
         RenderStyle::Octal => OCTAL_GLYPHS,
     };
 
-    for x in 0..width {
+    for x in 0..size.x {
         changed.set(
             x,
             if displayed[x] < actual[x] {
@@ -74,12 +74,12 @@ pub fn render(
         }
     }
 
-    for y in 0..height {
+    for y in 0..size.y {
         queue!(stdout, MoveTo(0, y as u16),)?;
 
-        for x in 0..width {
+        for x in 0..size.x {
             let value = displayed[x];
-            let y = height - 1 - y;
+            let y = size.y - 1 - y;
 
             let frac = value % 8;
             let whole = value / 8;
