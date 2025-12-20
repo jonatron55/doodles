@@ -88,14 +88,14 @@ impl<'a> Agent<'a> {
     pub fn new(maze: &'a Maze, color: Color) -> Self {
         Agent {
             maze,
-            position: UVec2::zero(),
+            position: UVec2::ZERO,
             state: State::Thinking,
             color,
             path: vec![Junction {
-                open: maze.walls(UVec2::zero()).complement(),
+                open: maze.walls(UVec2::ZERO).complement(),
                 from: None,
             }],
-            closed: HashSet::from([UVec2::zero()]),
+            closed: HashSet::from([UVec2::ZERO]),
             dir: Direction::East,
         }
     }

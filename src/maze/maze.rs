@@ -17,13 +17,20 @@ use crossterm::{
 use doodles::common::{
     borders::BorderStyle,
     color::Color,
-    dir::{Direction, Directions},
+    dir::Directions,
     image::Image,
     vec::{UVec2, uvec2},
 };
 use rand::Rng;
 
-use crate::agent::{Agent, RenderStyle as AgentRenderStyle};
+use crate::{
+    agent::{Agent, RenderStyle as AgentRenderStyle},
+    maze::{dfs::DfsMazeBuilder, wilsons::WilsonsMazeBuilder},
+};
+
+pub mod dfs;
+pub mod prims;
+pub mod wilsons;
 
 /// A two-dimensional maze.
 ///
@@ -36,9 +43,11 @@ use crate::agent::{Agent, RenderStyle as AgentRenderStyle};
 /// implied to be impassable in those directions. The exit is explicitly placed at the southeast corner by removing the
 /// east wall of that cell.
 ///
-/// The maze is initially completely impassable and is generated using a randomized depth-first search algorithm. The
-/// function [`Maze::build_next`] should be called repeatedly until it returns `false`, indicating that the maze is
-/// fully generated.
+/// The maze starts with all interior passages walled off and is carved by a maze generation algorithm.
+///
+/// Generation is implemented by [`MazeBuilder`] variants (for example, [`DfsMazeBuilder`] and [`WilsonsMazeBuilder`]).
+/// Call [`MazeBuilder::build_next`] repeatedly until it returns `false`, indicating that the maze is fully generated.
+#[derive(Clone)]
 pub struct Maze {
     size: UVec2,
 
@@ -47,9 +56,23 @@ pub struct Maze {
 
     /// Cached bitmap representation for rendering.
     bitmap: RefCell<Option<BitVec>>,
+}
 
-    /// Remaining open cells to process during maze generation.
-    open: Vec<OpenCell>,
+/// Maze generation bias mode.
+///
+/// This controls the likelihood of horizontal passages being carved before vertical passages during maze generation.
+pub enum BiasMode {
+    /// Uniform bias value.
+    Uniform(f64),
+
+    /// Bias sampled from an image.
+    Image(Image),
+}
+
+/// A maze generation algorithm.
+pub enum MazeBuilder<'a> {
+    Dfs(DfsMazeBuilder<'a>),
+    Wilsons(WilsonsMazeBuilder<'a>),
 }
 
 /// Maze rendering style.
@@ -75,20 +98,6 @@ pub enum WallStyle {
     Hedge,
 }
 
-pub enum BiasMode {
-    Uniform(f64),
-    Image(Image),
-}
-
-/// A cell that has been encountered during maze generation but not yet visited.
-struct OpenCell {
-    /// Position of the cell.
-    cell: UVec2,
-
-    /// Position from which this cell was reached.
-    from: UVec2,
-}
-
 const HEDGE_CHARS: [char; 51] = [
     '⡟', '⡪', '⡯', '⡳', '⡵', '⡵', '⡷', '⡹', '⡺', '⡻', '⡼', '⡽', '⡾', '⡿', '⢏', '⢕', '⢗', '⢜', '⢝',
     '⢞', '⢟', '⢮', '⢯', '⢷', '⢻', '⢽', '⢾', '⢿', '⣎', '⣏', '⣕', '⣗', '⣝', '⣞', '⣟', '⣣', '⣧', '⣪',
@@ -102,13 +111,13 @@ bitflags! {
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     pub struct Cell: u8 {
         /// This cell is impassable to the east.
-        const WALL_EAST  = 0b0000_0010;
+        const WALL_EAST = 0b0000_0001;
 
         /// This cell is impassable to the south.
-        const WALL_SOUTH = 0b0000_0100;
+        const WALL_SOUTH = 0b0000_0010;
 
         /// This cell has been visited during maze generation.
-        const VISITED    = 0b1000_0000;
+        const VISITED = 0b0000_1000;
     }
 }
 
@@ -122,10 +131,6 @@ impl Maze {
             size,
             cells,
             bitmap: RefCell::new(None),
-            open: vec![OpenCell {
-                cell: uvec2(0, 0),
-                from: uvec2(0, 0),
-            }],
         }
     }
 
@@ -153,95 +158,6 @@ impl Maze {
         }
 
         walls
-    }
-
-    /// Perform the next step of maze generation.
-    ///
-    /// Returns `true` if more steps are needed, or `false` if the maze is fully generated.
-    pub fn build_next<R: Rng>(&mut self, rand: &mut R, bias: &BiasMode) -> bool {
-        // Get the next unvisited cell.
-        let Some(OpenCell {
-            cell: UVec2 { x, y },
-            from: UVec2 {
-                x: from_x,
-                y: from_y,
-            },
-        }) = self.pop_unvisited()
-        else {
-            // No more open cells; maze generation is complete.
-            return false;
-        };
-
-        let current = self.cell_index(uvec2(x, y));
-
-        // Mark cell as visited.
-        self.cells[current].insert(Cell::VISITED);
-
-        let from = self.cell_index(uvec2(from_x, from_y));
-
-        // Remove wall between current and previous cell.
-        if x < from_x {
-            self.cells[current].remove(Cell::WALL_EAST);
-        } else if x > from_x {
-            self.cells[from].remove(Cell::WALL_EAST);
-        } else if y < from_y {
-            self.cells[current].remove(Cell::WALL_SOUTH);
-        } else if y > from_y {
-            self.cells[from].remove(Cell::WALL_SOUTH);
-        }
-
-        // Push unvisited neighbors in random order.
-        let horz = if rand.random_bool(0.5) {
-            (Direction::East, Direction::West)
-        } else {
-            (Direction::West, Direction::East)
-        };
-        let vert = if rand.random_bool(0.5) {
-            (Direction::North, Direction::South)
-        } else {
-            (Direction::South, Direction::North)
-        };
-
-        let bias = match bias {
-            BiasMode::Uniform(b) => *b,
-            BiasMode::Image(img) => {
-                let UVec2 {
-                    x: img_width,
-                    y: img_height,
-                } = img.size();
-                if x < img_width && y < img_height {
-                    img.pixel(uvec2(x, y))
-                } else {
-                    0.5
-                }
-            }
-        };
-
-        let dirs = if rand.random_bool(bias) {
-            [horz.0, horz.1, vert.0, vert.1]
-        } else {
-            [vert.0, vert.1, horz.0, horz.1]
-        };
-
-        for &dir in &dirs {
-            let Some(n) = dir.move_point_within(uvec2(x, y), self.size) else {
-                continue;
-            };
-
-            let next = self.cell_index(n);
-            let neighbor = self.cells[next];
-            if !neighbor.contains(Cell::VISITED) {
-                self.open.push(OpenCell {
-                    cell: n,
-                    from: uvec2(x, y),
-                });
-            }
-        }
-
-        // Invalidate cached bitmap.
-        self.bitmap.replace(None);
-
-        true
     }
 
     /// Render the maze to the terminal.
@@ -444,18 +360,8 @@ impl Maze {
         uvec2(self.size.x * 2 + 1, self.size.y * 2 + 1)
     }
 
-    /// Pop the next unvisited open cell from the stack, skipping any that have already been visited.
-    ///
-    /// Returns `None` if there are no unvisited open cells remaining (i.e., maze generation is complete).
-    fn pop_unvisited(&mut self) -> Option<OpenCell> {
-        while let Some(open_cell) = self.open.pop() {
-            let p = open_cell.cell;
-            let idx = self.cell_index(p);
-            if !self.cells[idx].contains(Cell::VISITED) {
-                return Some(open_cell);
-            }
-        }
-        None
+    fn invalidate(&mut self) {
+        self.bitmap.replace(None);
     }
 }
 
@@ -471,6 +377,47 @@ impl RenderStyle {
             outer: self.outer,
             inner: self.inner,
             color,
+        }
+    }
+}
+
+impl MazeBuilder<'_> {
+    /// Build the next step of the maze generation.
+    pub fn build_next<R: Rng>(&mut self, rand: &mut R, bias: &BiasMode) -> bool {
+        match self {
+            MazeBuilder::Dfs(builder) => builder.build_next(rand, bias),
+            MazeBuilder::Wilsons(builder) => builder.build_next(rand, bias),
+        }
+    }
+
+    pub fn render(
+        &self,
+        style: &RenderStyle,
+        agents: &[Agent],
+        agent_style: &AgentRenderStyle,
+        random_state: &RandomState,
+    ) -> IoResult<()> {
+        match self {
+            MazeBuilder::Dfs(builder) => builder.render(style, agents, agent_style, random_state),
+            MazeBuilder::Wilsons(builder) => {
+                builder.render(style, agents, agent_style, random_state)
+            }
+        }
+    }
+}
+
+impl BiasMode {
+    /// Get the bias value at the given coordinates.
+    pub fn sample(&self, p: UVec2) -> f64 {
+        match self {
+            BiasMode::Uniform(b) => *b,
+            BiasMode::Image(img) => {
+                if p.x < img.size().x && p.y < img.size().y {
+                    img.pixel(p)
+                } else {
+                    0.5
+                }
+            }
         }
     }
 }

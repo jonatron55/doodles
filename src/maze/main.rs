@@ -23,10 +23,12 @@ use doodles::common::{
 use rand::Rng;
 use rand::seq::SliceRandom;
 
-use crate::maze::{Maze, RenderStyle as MazeRenderStyle, WallStyle};
 use crate::{
     agent::{Agent, RenderStyle as AgentRenderStyle},
-    maze::BiasMode,
+    maze::{
+        BiasMode, Maze, MazeBuilder, RenderStyle as MazeRenderStyle, WallStyle,
+        dfs::DfsMazeBuilder, wilsons::WilsonsMazeBuilder,
+    },
 };
 
 mod agent;
@@ -39,6 +41,10 @@ pub struct Args {
     #[clap(flatten)]
     common: CommonArgs,
 
+    /// Maze generation algorithm.
+    #[clap(short = 'a', long = "algo")]
+    algorithm: Option<MazeAlgorithm>,
+
     /// Maze render style.
     #[clap(short = 'm', long)]
     maze_style: Option<MazeRenderArg>,
@@ -48,7 +54,7 @@ pub struct Args {
     color: Option<Color>,
 
     /// Agent render style.
-    #[clap(short = 'a', long)]
+    #[clap(short = 'A', long)]
     agent_style: Option<AgentRenderStyle>,
 
     /// Number of agents.
@@ -82,10 +88,22 @@ enum MazeRenderArg {
     Hedge = 5,
 }
 
+#[derive(ValueEnum, Clone, Copy, Debug)]
+enum MazeAlgorithm {
+    /// Randomized depth-first search.
+    Dfs,
+
+    /// Prim's algorithm.
+    Prims,
+
+    /// Wilson's algorithm.
+    Wilsons,
+}
+
 /// Maze bias style argument.
 #[derive(Parser, Clone, Debug)]
 pub struct BiasArg {
-    /// Passages are uniformly biased in one direction.
+    /// Set a uniform direction bias for passage generation.
     ///
     /// A value of 0 causes a completely horizontal bias, and a value of 1 causes a completely vertical bias. A value of
     /// 0.5 results in no bias.
@@ -97,10 +115,8 @@ pub struct BiasArg {
     /// The brightness of each pixel influences the direction of passages in the corresponding maze cell. Darker pixels
     /// favor horizontal passages, while lighter pixels favor vertical passages.
     ///
-    /// This argument may specify a path to an image in a standard format, or one of the predefined patterns:
-    ///
-    /// - `checkered(width,height)`: A width by height checkered pattern.
-    /// - `concentric(width)`: Concentric rings of width `width`.
+    /// This argument may specify a path to an image in a standard format, or either one 'checkered(width,height)', or
+    /// 'concentric(width)'.
     #[clap(short = 'I', long, conflicts_with = "bias")]
     pub image: Option<PathBuf>,
 }
@@ -177,7 +193,7 @@ fn main() -> IoResult<()> {
             .unwrap_or_else(|| AgentRenderStyle::choose(&mut rand));
 
         // Calculate maze dimensions based on terminal size. Each cell is 2x2 characters, plus a 1-character border.
-        size = (size - UVec2::one()) / 2;
+        size = (size - UVec2::ONE) / 2;
         let mut maze = Maze::new(size);
 
         let bias = if let Some(bias_image_path) = &args.bias.image {
@@ -216,12 +232,29 @@ fn main() -> IoResult<()> {
             }
         };
 
+        let algorithm = args
+            .algorithm
+            .unwrap_or_else(|| match rand.random_range(0..2) {
+                0 => MazeAlgorithm::Dfs,
+                1 => MazeAlgorithm::Wilsons,
+                2 => MazeAlgorithm::Prims,
+                _ => unreachable!(),
+            });
+
+        let mut builder = match algorithm {
+            MazeAlgorithm::Dfs => MazeBuilder::Dfs(DfsMazeBuilder::new(&mut maze)),
+            MazeAlgorithm::Prims => unimplemented!(),
+            MazeAlgorithm::Wilsons => {
+                MazeBuilder::Wilsons(WilsonsMazeBuilder::new(&mut maze, &mut rand))
+            }
+        };
+
         'build: loop {
-            if !maze.build_next(&mut rand, &bias) {
+            if !builder.build_next(&mut rand, &bias) {
                 break 'build;
             }
 
-            maze.render(&maze_style, &[], &agent_style, &random_state)?;
+            builder.render(&maze_style, &[], &agent_style, &random_state)?;
 
             match args.common.wait()? {
                 WaitResult::Continue => {}
@@ -229,6 +262,8 @@ fn main() -> IoResult<()> {
                 WaitResult::Exit => break 'outer,
             }
         }
+
+        drop(builder);
 
         let mut agents = (0..args.agents)
             .map(|i| Agent::new(&maze, Color::from((i as u8 % 7) + 1)))

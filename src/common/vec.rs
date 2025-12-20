@@ -22,20 +22,15 @@ pub const fn uvec2(x: usize, y: usize) -> UVec2 {
 }
 
 impl UVec2 {
+    pub const ZERO: UVec2 = UVec2 { x: 0, y: 0 };
+    pub const ONE: UVec2 = UVec2 { x: 1, y: 1 };
+
     pub const fn new(x: usize, y: usize) -> Self {
         UVec2 { x, y }
     }
 
     pub const fn smear(n: usize) -> Self {
         UVec2 { x: n, y: n }
-    }
-
-    pub const fn zero() -> Self {
-        Self::smear(0)
-    }
-
-    pub const fn one() -> Self {
-        Self::smear(1)
     }
 
     pub fn abs_diff(&self, other: Self) -> Self {
@@ -146,6 +141,12 @@ impl UVec2 {
             x: self.x.checked_div(rhs)?,
             y: self.y.checked_div(rhs)?,
         })
+    }
+}
+
+impl Default for UVec2 {
+    fn default() -> Self {
+        UVec2::ZERO
     }
 }
 

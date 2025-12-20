@@ -41,6 +41,32 @@ impl Direction {
         }
     }
 
+    /// Returns a list of directions shuffled with the given bias.
+    ///
+    /// The `bias` parameter controls the likelihood of horizontal directions
+    /// appearing before vertical directions. A bias of `1.0` means vertical
+    /// directions will always come first, while a bias of `0.0` means
+    /// horizontal directions will always come first. A bias of `0.5` results in
+    /// a uniform random shuffle.
+    pub fn biased_shuffle<R: Rng>(rand: &mut R, bias: f64) -> [Self; 4] {
+        let horz = if rand.random_bool(0.5) {
+            (Direction::East, Direction::West)
+        } else {
+            (Direction::West, Direction::East)
+        };
+        let vert = if rand.random_bool(0.5) {
+            (Direction::North, Direction::South)
+        } else {
+            (Direction::South, Direction::North)
+        };
+
+        if rand.random_bool(bias) {
+            [vert.0, vert.1, horz.0, horz.1]
+        } else {
+            [horz.0, horz.1, vert.0, vert.1]
+        }
+    }
+
     /// Returns the opposite direction.
     pub fn opposite(self) -> Direction {
         match self {

@@ -50,8 +50,8 @@ pub struct Args {
     ascending: bool,
 
     /// Sorting algorithm.
-    #[arg(short = 'a', long, default_value = "qsort")]
-    algo: Algorithm,
+    #[arg(short = 'a', long = "algo", default_value = "qsort")]
+    algorithm: Algorithm,
 }
 
 #[derive(ValueEnum, Clone, Debug)]
@@ -110,7 +110,7 @@ fn main() -> IoResult<()> {
 
         actual.shuffle(&mut rand);
 
-        let mut sort_state = match args.algo {
+        let mut sort_state = match args.algorithm {
             Algorithm::Bubble => SortState::Bubble(BubbleState::new()),
             Algorithm::Qsort => SortState::QSort(QsortState::new(&actual)),
         };
