@@ -10,7 +10,7 @@ use doodles::common::{
 use rand::{Rng, seq::SliceRandom};
 
 use crate::{
-    agent::{Agent, RenderStyle as AgentRenderStyle},
+    agent::RenderStyle as AgentRenderStyle,
     maze::{BiasMode, Cell, Maze, RenderStyle},
 };
 
@@ -31,12 +31,9 @@ pub struct WilsonsMazeBuilder<'a> {
 impl<'a> WilsonsMazeBuilder<'a> {
     pub fn new<R: Rng>(maze: &'a mut Maze, rand: &mut R) -> Self {
         // Add all cells to the open set and shuffle it.
-        let mut open = Vec::with_capacity(maze.size.x as usize * maze.size.y as usize);
-        for y in 0..maze.size.y {
-            for x in 0..maze.size.x {
-                open.push(uvec2(x, y));
-            }
-        }
+        let mut open: Vec<_> = (0..maze.size.x)
+            .flat_map(|x| (0..maze.size.y).map(move |y| uvec2(x, y)))
+            .collect();
 
         open.shuffle(rand);
 
@@ -164,14 +161,9 @@ impl<'a> WilsonsMazeBuilder<'a> {
         unreachable!("No available directions to walk from {head}");
     }
 
-    pub fn render(
-        &self,
-        style: &RenderStyle,
-        agents: &[Agent],
-        agent_style: &AgentRenderStyle,
-        random_state: &RandomState,
-    ) -> IoResult<()> {
-        self.maze.render(style, agents, agent_style, random_state)
+    pub fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
+        self.maze
+            .render(style, &[], &[], &AgentRenderStyle::default(), random_state)
     }
 
     /// Pop an unvisited cell from the open set.

@@ -10,7 +10,7 @@ use doodles::common::{
 use rand::Rng;
 
 use crate::{
-    agent::{Agent, RenderStyle as AgentRenderStyle},
+    agent::RenderStyle as AgentRenderStyle,
     maze::{BiasMode, Cell, Maze, RenderStyle},
 };
 
@@ -102,14 +102,9 @@ impl<'a> DfsMazeBuilder<'a> {
         true
     }
 
-    pub fn render(
-        &self,
-        style: &RenderStyle,
-        agents: &[Agent],
-        agent_style: &AgentRenderStyle,
-        random_state: &RandomState,
-    ) -> IoResult<()> {
-        self.maze.render(style, agents, agent_style, random_state)
+    pub fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
+        self.maze
+            .render(style, &[], &[], &AgentRenderStyle::default(), random_state)
     }
 
     /// Pop the next unvisited open cell from the stack, skipping any that have already been visited.

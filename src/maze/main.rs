@@ -29,10 +29,12 @@ use crate::{
         BiasMode, Maze, MazeBuilder, RenderStyle as MazeRenderStyle, WallStyle,
         dfs::DfsMazeBuilder, wilsons::WilsonsMazeBuilder,
     },
+    trinket::Trinket,
 };
 
 mod agent;
 mod maze;
+mod trinket;
 
 /// Generates and solves mazes.
 #[derive(Parser, Debug)]
@@ -60,6 +62,10 @@ pub struct Args {
     /// Number of agents.
     #[clap(short = 'N', long, default_value_t = 6)]
     agents: usize,
+
+    /// Place random trinkets throughout the maze.
+    #[clap(short = 't', long)]
+    trinkets: Option<bool>,
 
     #[clap(flatten)]
     bias: BiasArg,
@@ -254,7 +260,7 @@ fn main() -> IoResult<()> {
                 break 'build;
             }
 
-            builder.render(&maze_style, &[], &agent_style, &random_state)?;
+            builder.render(&maze_style, &random_state)?;
 
             match args.common.wait()? {
                 WaitResult::Continue => {}
@@ -264,6 +270,24 @@ fn main() -> IoResult<()> {
         }
 
         drop(builder);
+
+        let mut trinkets = if args.trinkets.unwrap_or(rand.random_bool(0.5)) {
+            let mut dead_ends: Vec<_> = maze.dead_ends().collect();
+            dead_ends.shuffle(&mut rand);
+            Trinket::new_collection(&dead_ends)
+        } else {
+            vec![]
+        };
+
+        for i in 0..trinkets.len() {
+            maze.render(
+                &maze_style,
+                &[],
+                &trinkets[0..i],
+                &agent_style,
+                &random_state,
+            )?;
+        }
 
         let mut agents = (0..args.agents)
             .map(|i| Agent::new(&maze, Color::from((i as u8 % 7) + 1)))
@@ -277,12 +301,17 @@ fn main() -> IoResult<()> {
             maze.render(
                 &maze_style,
                 &agents[0..active_agents],
+                &trinkets,
                 &agent_style,
                 &random_state,
             )?;
 
+            for trinket in trinkets.iter_mut() {
+                trinket.update();
+            }
+
             for agent in agents.iter_mut().take(active_agents) {
-                agent.update(&mut rand);
+                agent.update(&mut trinkets, &mut rand);
             }
 
             frames += 1;

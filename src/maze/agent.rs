@@ -8,7 +8,7 @@ use std::{
 };
 
 use clap::{ValueEnum, builder::PossibleValue};
-use crossterm::{cursor::MoveTo, queue, style::PrintStyledContent};
+use crossterm::{queue, style::PrintStyledContent};
 use doodles::common::{
     color::Color,
     dir::{Direction, Directions},
@@ -16,7 +16,7 @@ use doodles::common::{
 };
 use rand::Rng;
 
-use crate::maze::Maze;
+use crate::{maze::Maze, trinket::Trinket};
 
 /// A maze-solving agent.
 ///
@@ -102,11 +102,18 @@ impl<'a> Agent<'a> {
 
     /// Update the agent's state by performing one step of a randomized depth-first search. This will have no effect if
     /// the agent has already halted.
-    pub fn update<R: Rng>(&mut self, rand: &mut R) {
+    pub fn update<R: Rng>(&mut self, trinkets: &mut [Trinket], rand: &mut R) {
         match &self.state {
             State::Thinking => {
                 // We are at a junction. If there are any unexplored paths from here, then take one at random.
                 // Otherwise, backtrack to the previous junction.
+
+                if let Some(idx) = trinkets
+                    .iter()
+                    .position(|t| t.position == self.position && !t.is_collected())
+                {
+                    trinkets[idx].collect();
+                }
 
                 if let Some(junction) = self.path.last_mut() {
                     if let Some(choice) = junction.open.choose(rand) {
@@ -165,8 +172,6 @@ impl<'a> Agent<'a> {
 
     /// Render the agent at its current position.
     pub fn render(&self, style: &RenderStyle) -> IoResult<()> {
-        let UVec2 { x, y } = self.render_position();
-
         let s = if matches!(self.state, State::Stuck) {
             "×"
         } else {
@@ -190,7 +195,6 @@ impl<'a> Agent<'a> {
 
         queue!(
             stdout(),
-            MoveTo(x as u16, y as u16),
             PrintStyledContent(self.color.bold_style().apply(s)),
         )
     }
@@ -286,5 +290,11 @@ impl ValueEnum for RenderStyle {
             RenderStyle::Inchworm => Some(PossibleValue::new("inchworm").alias("i").alias("1")),
             RenderStyle::Turtle => Some(PossibleValue::new("turtle").alias("t").alias("2")),
         }
+    }
+}
+
+impl Default for RenderStyle {
+    fn default() -> Self {
+        RenderStyle::Smiley
     }
 }

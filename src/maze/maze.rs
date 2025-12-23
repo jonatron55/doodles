@@ -26,6 +26,7 @@ use rand::Rng;
 use crate::{
     agent::{Agent, RenderStyle as AgentRenderStyle},
     maze::{dfs::DfsMazeBuilder, wilsons::WilsonsMazeBuilder},
+    trinket::Trinket,
 };
 
 pub mod dfs;
@@ -134,6 +135,12 @@ impl Maze {
         }
     }
 
+    pub fn dead_ends(&mut self) -> impl Iterator<Item = UVec2> + '_ {
+        (0..self.size.x)
+            .flat_map(|x| (0..self.size.y).map(move |y| uvec2(x, y)))
+            .filter(|&p| self.walls(p).bits().count_ones() >= 3)
+    }
+
     /// Compute all walls present at the given cell.
     pub fn walls(&self, p: UVec2) -> Directions {
         let cell = self.cells[self.cell_index(p)];
@@ -168,6 +175,7 @@ impl Maze {
         &self,
         style: &RenderStyle,
         agents: &[Agent],
+        trinkets: &[Trinket],
         agent_style: &AgentRenderStyle,
         random_state: &RandomState,
     ) -> IoResult<()> {
@@ -185,16 +193,21 @@ impl Maze {
                 if let Some(agent) = agents.iter().find(|a| a.render_position() == uvec2(x, y)) {
                     agent.render(agent_style)?;
                     continue;
+                } else if let Some(trinket) =
+                    trinkets.iter().find(|t| t.render_position() == uvec2(x, y))
+                {
+                    trinket.render()?;
+                    continue;
                 }
 
                 if !bmp[idx] {
-                    let cell = uvec2((x.wrapping_sub(1)) / 2, (y.wrapping_sub(1)) / 2);
+                    let cell_pos = uvec2((x.wrapping_sub(1)) / 2, (y.wrapping_sub(1)) / 2);
                     if (x.wrapping_sub(1)) % 2 == 0
                         && (y.wrapping_sub(1)) % 2 == 0
-                        && cell.x < self.size.x
-                        && cell.y < self.size.y
+                        && cell_pos.x < self.size.x
+                        && cell_pos.y < self.size.y
                     {
-                        let cell = self.cells[self.cell_index(cell)];
+                        let cell = self.cells[self.cell_index(cell_pos)];
                         if !cell.contains(Cell::VISITED) {
                             let style = &style.color.dim_style();
                             queue!(stdout, PrintStyledContent(style.apply('∎')))?;
@@ -390,18 +403,10 @@ impl MazeBuilder<'_> {
         }
     }
 
-    pub fn render(
-        &self,
-        style: &RenderStyle,
-        agents: &[Agent],
-        agent_style: &AgentRenderStyle,
-        random_state: &RandomState,
-    ) -> IoResult<()> {
+    pub fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
         match self {
-            MazeBuilder::Dfs(builder) => builder.render(style, agents, agent_style, random_state),
-            MazeBuilder::Wilsons(builder) => {
-                builder.render(style, agents, agent_style, random_state)
-            }
+            MazeBuilder::Dfs(builder) => builder.render(style, random_state),
+            MazeBuilder::Wilsons(builder) => builder.render(style, random_state),
         }
     }
 }
