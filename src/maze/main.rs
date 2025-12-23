@@ -27,7 +27,7 @@ use crate::{
     agent::{Agent, RenderStyle as AgentRenderStyle},
     maze::{
         BiasMode, Maze, MazeBuilder, RenderStyle as MazeRenderStyle, WallStyle,
-        dfs::DfsMazeBuilder, wilsons::WilsonsMazeBuilder,
+        dfs::DfsMazeBuilder, prims::PrimsMazeBuilder, wilsons::WilsonsMazeBuilder,
     },
     trinket::Trinket,
 };
@@ -248,8 +248,8 @@ fn main() -> IoResult<()> {
             });
 
         let mut builder = match algorithm {
-            MazeAlgorithm::Dfs => MazeBuilder::Dfs(DfsMazeBuilder::new(&mut maze)),
-            MazeAlgorithm::Prims => unimplemented!(),
+            MazeAlgorithm::Dfs => MazeBuilder::Dfs(DfsMazeBuilder::new(&mut maze, &mut rand)),
+            MazeAlgorithm::Prims => MazeBuilder::Prims(PrimsMazeBuilder::new(&mut maze, &mut rand)),
             MazeAlgorithm::Wilsons => {
                 MazeBuilder::Wilsons(WilsonsMazeBuilder::new(&mut maze, &mut rand))
             }

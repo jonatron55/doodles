@@ -25,7 +25,7 @@ use rand::Rng;
 
 use crate::{
     agent::{Agent, RenderStyle as AgentRenderStyle},
-    maze::{dfs::DfsMazeBuilder, wilsons::WilsonsMazeBuilder},
+    maze::{dfs::DfsMazeBuilder, prims::PrimsMazeBuilder, wilsons::WilsonsMazeBuilder},
     trinket::Trinket,
 };
 
@@ -73,6 +73,7 @@ pub enum BiasMode {
 /// A maze generation algorithm.
 pub enum MazeBuilder<'a> {
     Dfs(DfsMazeBuilder<'a>),
+    Prims(PrimsMazeBuilder<'a>),
     Wilsons(WilsonsMazeBuilder<'a>),
 }
 
@@ -399,6 +400,7 @@ impl MazeBuilder<'_> {
     pub fn build_next<R: Rng>(&mut self, rand: &mut R, bias: &BiasMode) -> bool {
         match self {
             MazeBuilder::Dfs(builder) => builder.build_next(rand, bias),
+            MazeBuilder::Prims(builder) => builder.build_next(rand, bias),
             MazeBuilder::Wilsons(builder) => builder.build_next(rand, bias),
         }
     }
@@ -406,6 +408,7 @@ impl MazeBuilder<'_> {
     pub fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
         match self {
             MazeBuilder::Dfs(builder) => builder.render(style, random_state),
+            MazeBuilder::Prims(builder) => builder.render(style, random_state),
             MazeBuilder::Wilsons(builder) => builder.render(style, random_state),
         }
     }

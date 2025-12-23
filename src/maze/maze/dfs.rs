@@ -36,12 +36,17 @@ struct DfsOpenCell {
 }
 
 impl<'a> DfsMazeBuilder<'a> {
-    pub fn new(maze: &'a mut Maze) -> Self {
+    pub fn new<R: Rng>(maze: &'a mut Maze, rand: &mut R) -> Self {
+        let initial = uvec2(
+            rand.random_range(0..maze.size.x),
+            rand.random_range(0..maze.size.y),
+        );
+
         DfsMazeBuilder {
             maze,
             open: vec![DfsOpenCell {
-                cell: uvec2(0, 0),
-                from: uvec2(0, 0),
+                cell: initial,
+                from: initial,
             }],
         }
     }
