@@ -79,7 +79,6 @@ impl<'a> WilsonsMazeBuilder<'a> {
                 continue;
             }
 
-            let cell_idx = self.maze.cell_index(head);
             let next_idx = self.maze.cell_index(next);
 
             if let Some(loop_start) = self.path.iter().position(|&p| p == next) {
@@ -114,24 +113,11 @@ impl<'a> WilsonsMazeBuilder<'a> {
             } else {
                 // Continue our drunken walk by removing the wall between the current cell and the next cell.
                 self.path.push(next);
-
-                match dir {
-                    Direction::North => {
-                        self.maze.cells[next_idx].remove(Cell::WALL_SOUTH);
-                    }
-                    Direction::South => {
-                        self.maze.cells[cell_idx].remove(Cell::WALL_SOUTH);
-                    }
-                    Direction::East => {
-                        self.maze.cells[cell_idx].remove(Cell::WALL_EAST);
-                    }
-                    Direction::West => {
-                        self.maze.cells[next_idx].remove(Cell::WALL_EAST);
-                    }
-                }
+                self.maze.tunnel_between(head, next);
 
                 if self.maze.cells[next_idx].contains(Cell::VISITED) {
-                    // We've found a cell that is already part of the maze. Complete this walk and start a new one.
+                    // We've found a cell that is already part of the maze (we know it cannot be part of our current
+                    // walk since we checked for that above). Complete this walk and start a new one.
                     let Some(new_head) = self.pop_unvisited() else {
                         // No more open cells; maze generation is complete.
                         self.maze.invalidate();

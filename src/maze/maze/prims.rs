@@ -11,7 +11,7 @@ use rand::{Rng, seq::IteratorRandom};
 
 use crate::{
     agent::RenderStyle as AgentRenderStyle,
-    maze::{BiasMode, Cell, Maze, RenderStyle},
+    maze::{Cell, Maze, RenderStyle},
 };
 
 /// A maze generator using Prim's algorithm.
@@ -21,7 +21,7 @@ use crate::{
 /// the frontier. This continues until all cells have been visited.
 ///
 /// This algorithm tends to produce mazes with many short dead ends and has a more uniform distribution of passage
-/// lengths.
+/// lengths. It does not support a bias in passage direction.
 pub struct PrimsMazeBuilder<'a> {
     maze: &'a mut Maze,
 
@@ -57,7 +57,7 @@ impl<'a> PrimsMazeBuilder<'a> {
         PrimsMazeBuilder { maze, frontier }
     }
 
-    pub fn build_next<R: Rng>(&mut self, rand: &mut R, bias: &BiasMode) -> bool {
+    pub fn build_next<R: Rng>(&mut self, rand: &mut R) -> bool {
         if self.frontier.is_empty() {
             return false;
         }
@@ -69,23 +69,12 @@ impl<'a> PrimsMazeBuilder<'a> {
         let from_idx = self.maze.cell_index(from);
 
         self.maze.cells[next_idx].insert(Cell::VISITED);
-
-        // Remove walls in the direction of travel. Consider that `dir` indicates the direction we took to reach this
-        // cell.
-        match dir {
-            Direction::North => self.maze.cells[next_idx].remove(Cell::WALL_SOUTH),
-            Direction::South => self.maze.cells[from_idx].remove(Cell::WALL_SOUTH),
-            Direction::West => self.maze.cells[next_idx].remove(Cell::WALL_EAST),
-            Direction::East => self.maze.cells[from_idx].remove(Cell::WALL_EAST),
-        }
+        self.maze.tunnel_between(from, next);
 
         self.maze.invalidate();
 
         // Add neighbors of next to the frontier.
-        let bias = bias.sample(next);
-        let dirs = Direction::biased_shuffle(rand, bias);
-
-        for dir in dirs.iter() {
+        for dir in Direction::ALL.iter() {
             if let Some(neighbor) = dir.move_point_within(next, self.maze.size) {
                 let neighbor_idx = self.maze.cell_index(neighbor);
                 if !self.maze.cells[neighbor_idx].contains(Cell::VISITED) {

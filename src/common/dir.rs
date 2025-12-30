@@ -30,6 +30,13 @@ bitflags! {
 }
 
 impl Direction {
+    pub const ALL: [Self; 4] = [
+        Direction::North,
+        Direction::East,
+        Direction::South,
+        Direction::West,
+    ];
+
     /// Choose a random direction.
     pub fn choose<R: Rng>(rand: &mut R) -> Self {
         match rand.random_range(0..4) {

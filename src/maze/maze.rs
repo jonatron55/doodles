@@ -306,6 +306,22 @@ impl Maze {
         stdout.flush()
     }
 
+    /// Remove the wall between two adjacent cells.
+    pub fn tunnel_between(&mut self, from: UVec2, to: UVec2) {
+        let from_idx = self.cell_index(from);
+        let to_idx = self.cell_index(to);
+
+        if from.x < to.x {
+            self.cells[from_idx].remove(Cell::WALL_EAST);
+        } else if from.x > to.x {
+            self.cells[to_idx].remove(Cell::WALL_EAST);
+        } else if from.y < to.y {
+            self.cells[from_idx].remove(Cell::WALL_SOUTH);
+        } else if from.y > to.y {
+            self.cells[to_idx].remove(Cell::WALL_SOUTH);
+        }
+    }
+
     /// Get the size of the maze in cells.
     pub fn size(&self) -> UVec2 {
         self.size
@@ -400,7 +416,7 @@ impl MazeBuilder<'_> {
     pub fn build_next<R: Rng>(&mut self, rand: &mut R, bias: &BiasMode) -> bool {
         match self {
             MazeBuilder::Dfs(builder) => builder.build_next(rand, bias),
-            MazeBuilder::Prims(builder) => builder.build_next(rand, bias),
+            MazeBuilder::Prims(builder) => builder.build_next(rand),
             MazeBuilder::Wilsons(builder) => builder.build_next(rand, bias),
         }
     }

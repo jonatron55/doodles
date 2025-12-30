@@ -29,7 +29,7 @@ pub struct DfsMazeBuilder<'a> {
 /// A cell that has been encountered during DFS maze generation but not yet visited.
 struct DfsOpenCell {
     /// Position of the cell.
-    cell: UVec2,
+    head: UVec2,
 
     /// Position from which this cell was reached.
     from: UVec2,
@@ -45,7 +45,7 @@ impl<'a> DfsMazeBuilder<'a> {
         DfsMazeBuilder {
             maze,
             open: vec![DfsOpenCell {
-                cell: initial,
+                head: initial,
                 from: initial,
             }],
         }
@@ -53,51 +53,33 @@ impl<'a> DfsMazeBuilder<'a> {
 
     pub fn build_next<R: Rng>(&mut self, rand: &mut R, bias: &BiasMode) -> bool {
         // Get the next unvisited cell.
-        let Some(DfsOpenCell {
-            cell: UVec2 { x, y },
-            from: UVec2 {
-                x: from_x,
-                y: from_y,
-            },
-        }) = self.pop_unvisited()
-        else {
+        let Some(DfsOpenCell { head, from }) = self.pop_unvisited() else {
             // No more open cells; maze generation is complete.
             return false;
         };
 
-        let current = self.maze.cell_index(uvec2(x, y));
+        let head_idx = self.maze.cell_index(head);
 
         // Mark cell as visited.
-        self.maze.cells[current].insert(Cell::VISITED);
-
-        let from = self.maze.cell_index(uvec2(from_x, from_y));
+        self.maze.cells[head_idx].insert(Cell::VISITED);
 
         // Remove wall between current and previous cell.
-        if x < from_x {
-            self.maze.cells[current].remove(Cell::WALL_EAST);
-        } else if x > from_x {
-            self.maze.cells[from].remove(Cell::WALL_EAST);
-        } else if y < from_y {
-            self.maze.cells[current].remove(Cell::WALL_SOUTH);
-        } else if y > from_y {
-            self.maze.cells[from].remove(Cell::WALL_SOUTH);
-        }
+        self.maze.tunnel_between(from, head);
 
         // Push unvisited neighbors in random order.
-        let bias = bias.sample(uvec2(x, y));
+        let bias = bias.sample(head);
         let dirs = Direction::biased_shuffle(rand, bias);
 
         for &dir in &dirs {
-            let Some(n) = dir.move_point_within(uvec2(x, y), self.maze.size) else {
+            let Some(next) = dir.move_point_within(head, self.maze.size) else {
                 continue;
             };
 
-            let next = self.maze.cell_index(n);
-            let neighbor = self.maze.cells[next];
-            if !neighbor.contains(Cell::VISITED) {
+            let next_idx = self.maze.cell_index(next);
+            if !self.maze.cells[next_idx].contains(Cell::VISITED) {
                 self.open.push(DfsOpenCell {
-                    cell: n,
-                    from: uvec2(x, y),
+                    head: next,
+                    from: head,
                 });
             }
         }
@@ -117,7 +99,7 @@ impl<'a> DfsMazeBuilder<'a> {
     /// Returns `None` if there are no unvisited open cells remaining (i.e., maze generation is complete).
     fn pop_unvisited(&mut self) -> Option<DfsOpenCell> {
         while let Some(open_cell) = self.open.pop() {
-            let p = open_cell.cell;
+            let p = open_cell.head;
             let idx = self.maze.cell_index(p);
             if !self.maze.cells[idx].contains(Cell::VISITED) {
                 return Some(open_cell);

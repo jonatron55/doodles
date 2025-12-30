@@ -64,8 +64,17 @@ pub struct Args {
     agents: usize,
 
     /// Place random trinkets throughout the maze.
-    #[clap(short = 't', long)]
-    trinkets: Option<bool>,
+    #[clap(short = 't', long, default_value_t = false)]
+    trinkets: bool,
+
+    /// Prevent trinkets from being placed in the maze.
+    #[clap(
+        short = 'T',
+        long,
+        default_value_t = false,
+        conflicts_with = "trinkets"
+    )]
+    no_trinkets: bool,
 
     #[clap(flatten)]
     bias: BiasArg,
@@ -271,7 +280,7 @@ fn main() -> IoResult<()> {
 
         drop(builder);
 
-        let mut trinkets = if args.trinkets.unwrap_or(rand.random_bool(0.5)) {
+        let mut trinkets = if args.trinkets || (!args.no_trinkets && rand.random_bool(0.5)) {
             let mut dead_ends: Vec<_> = maze.dead_ends().collect();
             dead_ends.shuffle(&mut rand);
             Trinket::new_collection(&dead_ends)
