@@ -66,7 +66,6 @@ impl<'a> PrimsMazeBuilder<'a> {
         let next_idx = self.maze.cell_index(next);
         let dir = self.frontier.remove(&next).unwrap();
         let from = dir.opposite().move_point(next);
-        let from_idx = self.maze.cell_index(from);
 
         self.maze.cells[next_idx].insert(Cell::VISITED);
         self.maze.tunnel_between(from, next);
