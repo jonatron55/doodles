@@ -1,6 +1,8 @@
 // Copyright (c) 2025 Jonathon Burnham Cobb
 // Licensed under the MIT-0 license.
 
+pub mod generator;
+
 use std::{
     cell::RefCell,
     hash::{BuildHasher, Hash, Hasher, RandomState},
@@ -25,13 +27,9 @@ use rand::Rng;
 
 use crate::{
     agent::{Agent, RenderStyle as AgentRenderStyle},
-    maze::{dfs::DfsMazeBuilder, prims::PrimsMazeBuilder, wilsons::WilsonsMazeBuilder},
+    maze::generator::{DfsMazeBuilder, PrimsMazeBuilder, WilsonsMazeBuilder},
     trinket::Trinket,
 };
-
-pub mod dfs;
-pub mod prims;
-pub mod wilsons;
 
 /// A two-dimensional maze.
 ///
@@ -48,7 +46,7 @@ pub mod wilsons;
 ///
 /// Generation is implemented by [`MazeBuilder`] variants (for example, [`DfsMazeBuilder`] and [`WilsonsMazeBuilder`]).
 /// Call [`MazeBuilder::build_next`] repeatedly until it returns `false`, indicating that the maze is fully generated.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Maze {
     size: UVec2,
 
@@ -62,6 +60,7 @@ pub struct Maze {
 /// Maze generation bias mode.
 ///
 /// This controls the likelihood of horizontal passages being carved before vertical passages during maze generation.
+#[derive(Clone, Debug)]
 pub enum BiasMode {
     /// Uniform bias value.
     Uniform(f64),
@@ -71,6 +70,7 @@ pub enum BiasMode {
 }
 
 /// A maze generation algorithm.
+#[derive(Debug)]
 pub enum MazeBuilder<'a> {
     Dfs(DfsMazeBuilder<'a>),
     Prims(PrimsMazeBuilder<'a>),
@@ -98,12 +98,13 @@ pub enum WallStyle {
     Bold,
     Block,
     Hedge,
+    Fence,
 }
 
 const HEDGE_CHARS: [char; 51] = [
-    '⡟', '⡪', '⡯', '⡳', '⡵', '⡵', '⡷', '⡹', '⡺', '⡻', '⡼', '⡽', '⡾', '⡿', '⢏', '⢕', '⢗', '⢜', '⢝',
-    '⢞', '⢟', '⢮', '⢯', '⢷', '⢻', '⢽', '⢾', '⢿', '⣎', '⣏', '⣕', '⣗', '⣝', '⣞', '⣟', '⣣', '⣧', '⣪',
-    '⣫', '⣮', '⣯', '⣳', '⣵', '⣷', '⣹', '⣺', '⣻', '⣼', '⣽', '⣾', '⣿',
+    '⡟', '⡪', '⡯', '⡳', '⡵', '⡵', '⡷', '⡹', '⡺', '⡻', '⡼', '⡽', '⡾', '⡿', '⢏', '⢕', '⢗', '⢜', '⢝', '⢞', '⢟', '⢮', '⢯',
+    '⢷', '⢻', '⢽', '⢾', '⢿', '⣎', '⣏', '⣕', '⣗', '⣝', '⣞', '⣟', '⣣', '⣧', '⣪', '⣫', '⣮', '⣯', '⣳', '⣵', '⣷', '⣹', '⣺',
+    '⣻', '⣼', '⣽', '⣾', '⣿',
 ];
 
 bitflags! {
@@ -194,9 +195,7 @@ impl Maze {
                 if let Some(agent) = agents.iter().find(|a| a.render_position() == uvec2(x, y)) {
                     agent.render(agent_style)?;
                     continue;
-                } else if let Some(trinket) =
-                    trinkets.iter().find(|t| t.render_position() == uvec2(x, y))
-                {
+                } else if let Some(trinket) = trinkets.iter().find(|t| t.render_position() == uvec2(x, y)) {
                     trinket.render()?;
                     continue;
                 }
@@ -247,29 +246,33 @@ impl Maze {
                     };
                     let ch = (hash as usize) % HEDGE_CHARS.len();
 
-                    queue!(
-                        stdout,
-                        PrintStyledContent(style.color.style().apply(HEDGE_CHARS[ch]))
-                    )
+                    queue!(stdout, PrintStyledContent(style.color.style().apply(HEDGE_CHARS[ch])))
                 };
 
-                if style.outer == WallStyle::Block && (x_border || y_border) {
-                    let color = if style.inner == WallStyle::Hedge {
+                let is_outer = x_border || y_border;
+
+                if style.outer == WallStyle::Block && is_outer {
+                    let color = if matches!(style.inner, WallStyle::Hedge | WallStyle::Fence) {
                         style.color.complement().medium_style()
                     } else {
                         style.color.medium_style()
                     };
 
                     queue!(stdout, PrintStyledContent(color.apply('█')))?;
-                } else if style.outer == WallStyle::Hedge && (x_border || y_border) {
+                } else if style.outer == WallStyle::Hedge && is_outer || style.inner == WallStyle::Hedge && !is_outer {
                     print_hedge(x, y)?;
-                } else if style.inner == WallStyle::Block && !(x_border || y_border) {
-                    queue!(
-                        stdout,
-                        PrintStyledContent(style.color.medium_style().apply('█'))
-                    )?;
-                } else if style.inner == WallStyle::Hedge && !(x_border || y_border) {
-                    print_hedge(x, y)?;
+                } else if style.outer == WallStyle::Fence && is_outer || style.inner == WallStyle::Fence && !is_outer {
+                    let ch = if dirs == Directions::NORTH | Directions::SOUTH {
+                        '┊'
+                    } else if dirs == Directions::EAST | Directions::WEST {
+                        '╌'
+                    } else {
+                        '•'
+                    };
+
+                    queue!(stdout, PrintStyledContent(style.color.style().apply(ch)))?;
+                } else if style.inner == WallStyle::Block && !is_outer {
+                    queue!(stdout, PrintStyledContent(style.color.medium_style().apply('█')))?;
                 } else {
                     let horizontal_style = if x_border { style.outer } else { style.inner };
                     let vertical_style = if y_border { style.outer } else { style.inner };
@@ -279,7 +282,7 @@ impl Maze {
                         WallStyle::Curved => BorderStyle::Curved,
                         WallStyle::Double => BorderStyle::Double,
                         WallStyle::Bold => BorderStyle::Bold,
-                        WallStyle::Block | WallStyle::Hedge => unreachable!(),
+                        _ => unreachable!(),
                     };
 
                     let vertical_style = match vertical_style {
@@ -287,17 +290,12 @@ impl Maze {
                         WallStyle::Curved => BorderStyle::Curved,
                         WallStyle::Double => BorderStyle::Double,
                         WallStyle::Bold => BorderStyle::Bold,
-                        WallStyle::Block | WallStyle::Hedge => unreachable!(),
+                        _ => unreachable!(),
                     };
 
                     queue!(
                         stdout,
-                        PrintStyledContent(
-                            style
-                                .color
-                                .style()
-                                .apply(dirs.border(horizontal_style, vertical_style))
-                        )
+                        PrintStyledContent(style.color.style().apply(dirs.border(horizontal_style, vertical_style)))
                     )?;
                 }
             }
@@ -308,6 +306,8 @@ impl Maze {
 
     /// Remove the wall between two adjacent cells.
     pub fn tunnel_between(&mut self, from: UVec2, to: UVec2) {
+        assert!(from.manhattan_dist(to) == 1, "Cells {from} and {to} are not adjacent");
+
         let from_idx = self.cell_index(from);
         let to_idx = self.cell_index(to);
 
@@ -360,15 +360,11 @@ impl Maze {
                         bitmap.set((by + 1) * bmp_size.x + bx, true);
                     }
 
-                    if x == 0
-                        || self.cells[self.cell_index(uvec2(x - 1, y))].contains(Cell::WALL_EAST)
-                    {
+                    if x == 0 || self.cells[self.cell_index(uvec2(x - 1, y))].contains(Cell::WALL_EAST) {
                         bitmap.set(by * bmp_size.x + (bx - 1), true);
                     }
 
-                    if y == 0
-                        || self.cells[self.cell_index(uvec2(x, y - 1))].contains(Cell::WALL_SOUTH)
-                    {
+                    if y == 0 || self.cells[self.cell_index(uvec2(x, y - 1))].contains(Cell::WALL_SOUTH) {
                         bitmap.set((by - 1) * bmp_size.x + bx, true);
                     }
                 }
@@ -381,17 +377,17 @@ impl Maze {
     }
 
     /// Get the linear index of a cell at the given coordinates.
-    fn cell_index(&self, p: UVec2) -> usize {
+    pub fn cell_index(&self, p: UVec2) -> usize {
         p.y * self.size.x + p.x
+    }
+
+    pub fn invalidate(&mut self) {
+        self.bitmap.replace(None);
     }
 
     /// Gets the total rendered bitmap size in characters.
     fn bitmap_size(&self) -> UVec2 {
         uvec2(self.size.x * 2 + 1, self.size.y * 2 + 1)
-    }
-
-    fn invalidate(&mut self) {
-        self.bitmap.replace(None);
     }
 }
 

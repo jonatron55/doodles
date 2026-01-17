@@ -101,10 +101,8 @@ fn main() -> IoResult<()> {
             Ordering::Less
         };
 
-        let colors = [
-            args.color1.unwrap_or_else(|| Color::choose(&mut rand)),
-            args.color2.unwrap_or_else(|| Color::choose(&mut rand)),
-        ];
+        let color1 = args.color1.unwrap_or_else(|| Color::choose(&mut rand));
+        let colors = [color1, args.color2.unwrap_or_else(|| color1.complement())];
 
         let style = args.style.unwrap_or_else(|| RenderStyle::choose(&mut rand));
 

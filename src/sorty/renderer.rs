@@ -10,11 +10,7 @@ use std::{
 use bitvec::bitvec;
 use clap::{ValueEnum, builder::PossibleValue};
 use crossterm::{cursor::MoveTo, queue, style::PrintStyledContent};
-use doodles::common::{
-    color::Color,
-    term::{DIM_STYLES, STYLES},
-    vec::UVec2,
-};
+use doodles::common::{color::Color, vec::UVec2};
 use rand::Rng;
 
 #[derive(Debug, Clone, Copy)]
@@ -84,16 +80,12 @@ pub fn render(
             let frac = value % 8;
             let whole = value / 8;
 
-            let styles = if y < whole || (y == whole && frac > 0) {
-                &STYLES
-            } else {
-                &DIM_STYLES
-            };
+            let color = if changed[x] { colors[1] } else { colors[0] };
 
-            let style = if changed[x] {
-                styles[(colors[1] as usize) % styles.len()]
+            let style = if y < whole || (y == whole && frac > 0) {
+                color.style()
             } else {
-                styles[(colors[0] as usize) % styles.len()]
+                color.dim_style()
             };
 
             let glyph = if y < whole {

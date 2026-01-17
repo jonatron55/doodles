@@ -2,21 +2,22 @@
 // Licensed under the MIT-0 license.
 
 use std::{
-    fmt::{Display, Formatter, Result as FmtResult},
+    fmt::{Binary, Display, Formatter, LowerHex, Octal, Result as FmtResult, UpperHex},
     ops::{
-        Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div,
-        DivAssign, Mul, MulAssign, Not, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub,
-        SubAssign,
+        Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div, DivAssign, Mul, MulAssign,
+        Not, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
     },
     str::FromStr,
 };
 
+/// A 2D vector with unsigned integer components.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct UVec2 {
     pub x: usize,
     pub y: usize,
 }
 
+/// Creates a new `UVec2` with the given components.
 pub const fn uvec2(x: usize, y: usize) -> UVec2 {
     UVec2 { x, y }
 }
@@ -25,36 +26,49 @@ impl UVec2 {
     pub const ZERO: UVec2 = UVec2 { x: 0, y: 0 };
     pub const ONE: UVec2 = UVec2 { x: 1, y: 1 };
 
+    /// Creates a new `UVec2` with the given components.
     pub const fn new(x: usize, y: usize) -> Self {
         UVec2 { x, y }
     }
 
+    /// Creates a new `UVec2` with both components set to `n`.
     pub const fn smear(n: usize) -> Self {
         UVec2 { x: n, y: n }
     }
 
+    /// Returns the component-wise absolute difference between two vectors.
+    ///
+    /// Since the components are unsigned, this is equivalent to subtracting the smaller component from the larger
+    /// component for each axis.
     pub fn abs_diff(&self, other: Self) -> Self {
-        let dx = self.x.abs_diff(other.x);
-        let dy = self.y.abs_diff(other.y);
-        UVec2 { x: dx, y: dy }
+        UVec2 {
+            x: self.x.abs_diff(other.x),
+            y: self.y.abs_diff(other.y),
+        }
     }
 
-    pub fn euclidean_distance_squared(&self, other: Self) -> f64 {
+    /// Returns the squared Euclidean distance between two vectors.
+    ///
+    /// This avoids a square root calculation in situations where only relative distances are needed.
+    pub fn euclidean_dist_sqr(&self, other: Self) -> f64 {
         let d = self.abs_diff(other);
         let (x, y) = (d.x as f64, d.y as f64);
         x * x + y * y
     }
 
-    pub fn euclidean_distance(&self, other: Self) -> f64 {
-        self.euclidean_distance_squared(other).sqrt()
+    /// Returns the Euclidean distance (as the crow flies) between two vectors.
+    pub fn euclidean_dist(&self, other: Self) -> f64 {
+        self.euclidean_dist_sqr(other).sqrt()
     }
 
-    pub fn manhattan_distance(&self, other: Self) -> usize {
+    /// Returns the Manhattan Taxicab distance (as the Rook moves) between two vectors.
+    pub fn manhattan_dist(&self, other: Self) -> usize {
         let d = self.abs_diff(other);
         d.x + d.y
     }
 
-    pub fn chebyshev_distance(&self, other: Self) -> usize {
+    /// Returns the Chebyshev distance (as the Queen moves) between two vectors.
+    pub fn chebyshev_dist(&self, other: Self) -> usize {
         let d = self.abs_diff(other);
         d.x.max(d.y)
     }
@@ -185,10 +199,7 @@ impl From<(u32, u32)> for UVec2 {
 
 impl From<(usize, usize)> for UVec2 {
     fn from(value: (usize, usize)) -> Self {
-        UVec2 {
-            x: value.0,
-            y: value.1,
-        }
+        UVec2 { x: value.0, y: value.1 }
     }
 }
 
@@ -348,10 +359,7 @@ impl BitXorAssign for UVec2 {
 impl Not for UVec2 {
     type Output = Self;
     fn not(self) -> Self {
-        Self {
-            x: !self.x,
-            y: !self.y,
-        }
+        Self { x: !self.x, y: !self.y }
     }
 }
 
@@ -391,7 +399,36 @@ impl ShrAssign<usize> for UVec2 {
 
 impl Display for UVec2 {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "({}, {})", self.x, self.y)
+        let (x, y) = (self.x, self.y);
+        write!(f, "({x}, {y})")
+    }
+}
+
+impl Binary for UVec2 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let (x, y) = (self.x, self.y);
+        write!(f, "({x:b}, {y:b})")
+    }
+}
+
+impl Octal for UVec2 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let (x, y) = (self.x, self.y);
+        write!(f, "({x:o}, {y:o})")
+    }
+}
+
+impl LowerHex for UVec2 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let (x, y) = (self.x, self.y);
+        write!(f, "({x:x}, {y:x})")
+    }
+}
+
+impl UpperHex for UVec2 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let (x, y) = (self.x, self.y);
+        write!(f, "({x:X}, {y:X})")
     }
 }
 
@@ -400,20 +437,16 @@ impl FromStr for UVec2 {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.trim();
-        if let Some((x_str, y_str)) = s
-            .strip_prefix('(')
-            .and_then(|s| s.strip_suffix(')'))
-            .and_then(|s| {
-                let mut parts = s.split(',');
-                if let (Some(x), Some(y)) = (parts.next(), parts.next())
-                    && parts.next().is_none()
-                {
-                    Some((x.trim(), y.trim()))
-                } else {
-                    None
-                }
-            })
-        {
+        if let Some((x_str, y_str)) = s.strip_prefix('(').and_then(|s| s.strip_suffix(')')).and_then(|s| {
+            let mut parts = s.split(',');
+            if let (Some(x), Some(y)) = (parts.next(), parts.next())
+                && parts.next().is_none()
+            {
+                Some((x.trim(), y.trim()))
+            } else {
+                None
+            }
+        }) {
             if let (Ok(x), Ok(y)) = (x_str.parse::<usize>(), y_str.parse::<usize>()) {
                 return Ok(UVec2 { x, y });
             }

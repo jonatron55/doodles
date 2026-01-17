@@ -112,11 +112,11 @@ fn main() -> IoResult<()> {
         Some(path) => match fs::read_to_string(&path) {
             Ok(content) => Some(Cow::Owned(content)),
             Err(err) => match path.to_string_lossy().to_ascii_uppercase().as_str() {
-                "ASCII" => Some(Cow::Borrowed(include_str!("ascii.txt"))),
-                "CP850" => Some(Cow::Borrowed(include_str!("cp850.txt"))),
-                "DROPLETS" => Some(Cow::Borrowed(include_str!("droplets.txt"))),
-                "HIRA-KATA" => Some(Cow::Borrowed(include_str!("hira-kata.txt"))),
-                "KATASCII" => Some(Cow::Borrowed(include_str!("katascii.txt"))),
+                "ASCII" => Some(Cow::Borrowed(include_str!("alphabets/ascii.txt"))),
+                "CP850" => Some(Cow::Borrowed(include_str!("alphabets/cp850.txt"))),
+                "DROPLETS" => Some(Cow::Borrowed(include_str!("alphabets/droplets.txt"))),
+                "HIRA-KATA" => Some(Cow::Borrowed(include_str!("alphabets/hira-kata.txt"))),
+                "KATASCII" => Some(Cow::Borrowed(include_str!("alphabets/katascii.txt"))),
                 _ => {
                     error!("Failed to read alphabet file {}: {}", path.display(), err);
                     return Err(err);

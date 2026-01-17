@@ -30,12 +30,7 @@ bitflags! {
 }
 
 impl Direction {
-    pub const ALL: [Self; 4] = [
-        Direction::North,
-        Direction::East,
-        Direction::South,
-        Direction::West,
-    ];
+    pub const ALL: [Self; 4] = [Direction::North, Direction::East, Direction::South, Direction::West];
 
     /// Choose a random direction.
     pub fn choose<R: Rng>(rand: &mut R) -> Self {
@@ -50,11 +45,9 @@ impl Direction {
 
     /// Returns a list of directions shuffled with the given bias.
     ///
-    /// The `bias` parameter controls the likelihood of horizontal directions
-    /// appearing before vertical directions. A bias of `1.0` means vertical
-    /// directions will always come first, while a bias of `0.0` means
-    /// horizontal directions will always come first. A bias of `0.5` results in
-    /// a uniform random shuffle.
+    /// The `bias` parameter controls the likelihood of horizontal directions appearing before vertical directions. A
+    /// bias of `1.0` means vertical directions will always come first, while a bias of `0.0` means horizontal
+    /// directions will always come first. A bias of `0.5` results in a uniform random shuffle.
     pub fn biased_shuffle<R: Rng>(rand: &mut R, bias: f64) -> [Self; 4] {
         let horz = if rand.random_bool(0.5) {
             (Direction::East, Direction::West)
@@ -156,22 +149,21 @@ impl Directions {
 
     /// Returns the border character for this combination of vertical and horizontal styles.
     pub fn border(self, vertical_style: BorderStyle, horizontal_style: BorderStyle) -> char {
-        let borders =
-            match (vertical_style, horizontal_style) {
-                (BorderStyle::Single, BorderStyle::Single) => &BORDERS_SINGLE,
-                (BorderStyle::Curved, BorderStyle::Curved) => &BORDERS_CURVED,
-                (BorderStyle::Bold, BorderStyle::Bold) => &BORDERS_BOLD,
-                (BorderStyle::Bold, BorderStyle::Single)
-                | (BorderStyle::Bold, BorderStyle::Curved) => &BORDERS_BOLD_SINGLE,
-                (BorderStyle::Single, BorderStyle::Bold)
-                | (BorderStyle::Curved, BorderStyle::Bold) => &BORDERS_SINGLE_BOLD,
-                (BorderStyle::Double, BorderStyle::Double) => &BORDERS_DOUBLE,
-                (BorderStyle::Double, BorderStyle::Single)
-                | (BorderStyle::Double, BorderStyle::Curved) => &BORDERS_DOUBLE_SINGLE,
-                (BorderStyle::Single, BorderStyle::Double)
-                | (BorderStyle::Curved, BorderStyle::Double) => &BORDERS_SINGLE_DOUBLE,
-                _ => &BORDERS_SINGLE,
-            };
+        let borders = match (vertical_style, horizontal_style) {
+            (BorderStyle::Single, BorderStyle::Single) => &BORDERS_SINGLE,
+            (BorderStyle::Curved, BorderStyle::Curved) => &BORDERS_CURVED,
+            (BorderStyle::Bold, BorderStyle::Bold) => &BORDERS_BOLD,
+            (BorderStyle::Bold, BorderStyle::Single) | (BorderStyle::Bold, BorderStyle::Curved) => &BORDERS_BOLD_SINGLE,
+            (BorderStyle::Single, BorderStyle::Bold) | (BorderStyle::Curved, BorderStyle::Bold) => &BORDERS_SINGLE_BOLD,
+            (BorderStyle::Double, BorderStyle::Double) => &BORDERS_DOUBLE,
+            (BorderStyle::Double, BorderStyle::Single) | (BorderStyle::Double, BorderStyle::Curved) => {
+                &BORDERS_DOUBLE_SINGLE
+            }
+            (BorderStyle::Single, BorderStyle::Double) | (BorderStyle::Curved, BorderStyle::Double) => {
+                &BORDERS_SINGLE_DOUBLE
+            }
+            _ => &BORDERS_SINGLE,
+        };
 
         borders[self.bits() as usize]
     }

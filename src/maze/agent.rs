@@ -21,8 +21,11 @@ use crate::{maze::Maze, trinket::Trinket};
 /// A maze-solving agent.
 ///
 /// Navigates the maze using a randomized depth-first search until it either finds the exit or exhausts all options.
+#[derive(Clone, Debug)]
 pub struct Agent<'a> {
+    /// Reference to the maze being solved.
     maze: &'a Maze,
+
     /// Current position within the maze.
     ///
     /// This is in maze cell coordinates, not terminal character coordinates. The rendering position of the agent
@@ -57,9 +60,13 @@ pub enum RenderStyle {
 
     /// Agent rendered as directional arrows (`▲`, `▶`, `▼`, `◀`).
     Turtle = 2,
+
+    /// Agent rendered as alternating slashes (`/` and `\`).
+    Walker = 3,
 }
 
 /// A maze-solving agent state.
+#[derive(Clone, Debug)]
 enum State {
     /// Agent is at a junction, deciding which way to go.
     Thinking,
@@ -74,7 +81,8 @@ enum State {
     Stuck,
 }
 
-/// A n agent's memory of a junction.
+/// An agent's memory of a junction.
+#[derive(Clone, Debug)]
 struct Junction {
     /// Unexplored directions at this junction.
     open: Directions,
@@ -108,10 +116,7 @@ impl<'a> Agent<'a> {
                 // We are at a junction. If there are any unexplored paths from here, then take one at random.
                 // Otherwise, backtrack to the previous junction.
 
-                if let Some(idx) = trinkets
-                    .iter()
-                    .position(|t| t.position == self.position && !t.is_collected())
-                {
+                if let Some(idx) = trinkets.iter().position(|t| t.position == self.position && !t.is_collected()) {
                     trinkets[idx].collect();
                 }
 
@@ -127,13 +132,14 @@ impl<'a> Agent<'a> {
                             self.state = State::Moving(from);
                             self.path.pop();
                         } else {
-                            // No unexplored paths and no way back. This means the maze is insoluble and should be
-                            // unreachable if the maze generation algorithm is correct.
+                            // No unexplored paths and no way back. This means the maze is insoluble and we should not
+                            // reach this point if the maze generation algorithm is correct.
                             self.state = State::Stuck;
                         }
                     }
                 } else {
-                    // We've backed all the way to the start and exhausted all options. The maze is insoluble.
+                    // We've backed all the way to the start and exhausted all options. The maze is insoluble and we
+                    // should not reach this point if the maze generation algorithm is correct.
                     self.state = State::Stuck;
                 }
             }
@@ -155,10 +161,7 @@ impl<'a> Agent<'a> {
                         let mut open = self.maze.walls(position).complement();
                         let from = dir.opposite();
                         open.remove(from.into());
-                        self.path.push(Junction {
-                            open,
-                            from: Some(from),
-                        });
+                        self.path.push(Junction { open, from: Some(from) });
                     }
                     self.dir = *dir;
                     self.state = State::Thinking;
@@ -190,13 +193,18 @@ impl<'a> Agent<'a> {
                     Direction::South => "▼",
                     Direction::West => "◀",
                 },
+
+                RenderStyle::Walker => {
+                    if (self.position.x + self.position.y) % 2 == 0 {
+                        "/"
+                    } else {
+                        "\\"
+                    }
+                }
             }
         };
 
-        queue!(
-            stdout(),
-            PrintStyledContent(self.color.bold_style().apply(s)),
-        )
+        queue!(stdout(), PrintStyledContent(self.color.bold_style().apply(s)),)
     }
 
     /// Get the agent's rendering position in terminal character coordinates.
@@ -235,7 +243,7 @@ impl<'a> Agent<'a> {
 impl RenderStyle {
     /// Choose a random render style.
     pub fn choose<R: Rng>(rand: &mut R) -> Self {
-        let value = rand.random_range(0..3);
+        let value = rand.random_range(0..4);
         RenderStyle::from(value)
     }
 }
@@ -252,6 +260,7 @@ impl FromStr for RenderStyle {
                 "S" | "SMILEY" => Ok(RenderStyle::Smiley),
                 "I" | "INCHWORM" => Ok(RenderStyle::Inchworm),
                 "T" | "TURTLE" => Ok(RenderStyle::Turtle),
+                "W" | "WALKER" => Ok(RenderStyle::Walker),
                 _ => Err(()),
             }
         }
@@ -266,10 +275,11 @@ impl Into<u8> for RenderStyle {
 
 impl From<u8> for RenderStyle {
     fn from(value: u8) -> Self {
-        match value % 3 {
+        match value % 4 {
             0 => RenderStyle::Smiley,
             1 => RenderStyle::Inchworm,
             2 => RenderStyle::Turtle,
+            3 => RenderStyle::Walker,
             _ => unreachable!(),
         }
     }
@@ -281,6 +291,7 @@ impl ValueEnum for RenderStyle {
             RenderStyle::Smiley,
             RenderStyle::Inchworm,
             RenderStyle::Turtle,
+            RenderStyle::Walker,
         ]
     }
 
@@ -289,6 +300,7 @@ impl ValueEnum for RenderStyle {
             RenderStyle::Smiley => Some(PossibleValue::new("smiley").alias("s").alias("0")),
             RenderStyle::Inchworm => Some(PossibleValue::new("inchworm").alias("i").alias("1")),
             RenderStyle::Turtle => Some(PossibleValue::new("turtle").alias("t").alias("2")),
+            RenderStyle::Walker => Some(PossibleValue::new("walker").alias("w").alias("3")),
         }
     }
 }

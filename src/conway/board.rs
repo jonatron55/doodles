@@ -3,9 +3,7 @@
 
 use std::{
     hash::{DefaultHasher, Hasher},
-    io::{
-        BufRead, BufReader, Error as IoError, ErrorKind as IoErrorKind, Read, Result as IoResult,
-    },
+    io::{BufRead, BufReader, Error as IoError, ErrorKind as IoErrorKind, Read, Result as IoResult},
 };
 
 use rand::{
@@ -20,21 +18,18 @@ const HISTORY_LEN: usize = 16;
 
 /// Represents the state of a Conway's Game of Life board.
 ///
-/// In addition to the usual rules of Conway's Game of Life, this implementation
-/// includes coloured cells, which modify the rules as follows:
+/// In addition to the usual rules of Conway's Game of Life, this implementation includes coloured cells, which modify
+/// the rules as follows:
 ///
-/// 1. Any live cell with fewer than two live neighbours **of the same colour**
-///    dies, as if by underpopulation.
-/// 2. Any live cell with two or three live neighbours **of the same colour**
-///    survives.
-/// 3. Any live cell with more than three live neighbours **of any colour** dies,
-///    as if by overpopulation.
-/// 4. Any dead cell with exactly three live neighbours **of the same colour**
-///    becomes a live cell, as if by reproduction.
+/// 1. Any live cell with fewer than two live neighbours **of the same colour** dies, as if by underpopulation.
+/// 2. Any live cell with two or three live neighbours **of the same colour** survives.
+/// 3. Any live cell with more than three live neighbours **of any colour** dies, as if by overpopulation.
+/// 4. Any dead cell with exactly three live neighbours **of the same colour** becomes a live cell, as if by
+///    reproduction.
 ///
 /// The "colour" values are arbitrary numbers; it is up to renderers to decide
 /// how to display them.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Board {
     width: usize,
     height: usize,
@@ -48,26 +43,22 @@ const MAX_AGE: u32 = 1024;
 
 /// Represents a single cell on the board.
 ///
-/// Cells may be alive, dead, or empty. If the cell is alive, this value is
-/// `Some(color)` and `age` is 0. Dead cells that are not empty have
-/// `Some(color)` and `age` > 0.
+/// Cells may be alive, dead, or empty. If the cell is alive, this value is `Some(color)` and `age` is 0. Dead cells
+/// that are not empty have `Some(color)` and `age` > 0.
 ///
-/// With respect to the Game of Life rules, there is no distinction between dead
-/// cells of different ages and empty cells; however, the age is may be used by
-/// renderers to display visual effects such as fading.
-#[derive(Clone, Copy)]
+/// With respect to the Game of Life rules, there is no distinction between dead cells of different ages and empty
+/// cells; however, the age is may be used by renderers to display visual effects such as fading.
+#[derive(Clone, Copy, Debug)]
 pub struct Cell {
     /// The color of the cell, or `None` if the cell is empty.
     ///
-    /// The actual color value is arbitrary; renders may display it however they
-    /// choose.
+    /// The actual color value is arbitrary; renders may display it however they choose.
     pub color: Option<u32>,
 
     /// The age of the cell.
     ///
-    /// A cell with age 0 is alive. If the cell dies, its age becomes 1 and
-    /// increments with each generation until it reaches `MAX_AGE`, at which
-    /// point the cell becomes empty.
+    /// A cell with age 0 is alive. If the cell dies, its age becomes 1 and increments with each generation until it
+    /// reaches `MAX_AGE`, at which point the cell becomes empty.
     pub age: u32,
 }
 
@@ -77,10 +68,7 @@ impl Board {
         Board {
             width,
             height,
-            cell_buffers: [
-                vec![Cell::empty(); width * height],
-                vec![Cell::empty(); width * height],
-            ],
+            cell_buffers: [vec![Cell::empty(); width * height], vec![Cell::empty(); width * height]],
             generation: 0,
             history: [0; HISTORY_LEN],
         }
@@ -102,15 +90,12 @@ impl Board {
 
     /// Updates the board's cells by reading from the given file reader.
     ///
-    /// The reader should provide a plain text representation of the board,
-    /// with rows of cells where white spaces represent  empty cells and any
-    /// other alphanumeric character represents a living cell. The color of a
-    /// living cell is determined by converting the character to a base-36
-    /// digit.
+    /// The reader should provide a plain text representation of the board, with rows of cells where white spaces
+    /// represent empty cells and any other alphanumeric character represents a living cell. The color of a living cell
+    /// is determined by converting the character to a base-36 digit.
     ///
-    /// If the number of rows or columns in the input does not match the board
-    /// size, excess cells will be discarded or missing cells will be treated as
-    /// empty.
+    /// If the number of rows or columns in the input does not match the board size, excess cells will be discarded or
+    /// missing cells will be treated as empty.
     ///
     /// Arguments
     /// =========
@@ -120,8 +105,8 @@ impl Board {
     /// Returns
     /// =======
     ///
-    /// `Ok(Board)` if the board was successfully loaded, or a
-    /// [`std::io::Error`] if any problems occurred during reading or parsing.
+    /// `Ok(Board)` if the board was successfully loaded, or a [`std::io::Error`] if any problems occurred during
+    /// reading or parsing.
     pub fn with_cells_from_file<R: Read>(mut self, reader: R) -> IoResult<Self> {
         let mut reader = BufReader::new(reader);
         let mut line = String::new();
@@ -200,10 +185,8 @@ impl Board {
                         }
 
                         neighbors.push(*self.cell(
-                            ((x as isize + dx + self.width as isize) % self.width as isize)
-                                as usize,
-                            ((y as isize + dy + self.height as isize) % self.height as isize)
-                                as usize,
+                            ((x as isize + dx + self.width as isize) % self.width as isize) as usize,
+                            ((y as isize + dy + self.height as isize) % self.height as isize) as usize,
                         ));
                     }
                 }
@@ -217,27 +200,17 @@ impl Board {
         self.generation += 1;
     }
 
-    /// Returns `true` if the board has converged to a stable or oscillating
-    /// state.
+    /// Returns `true` if the board has converged to a stable or oscillating state.
     ///
-    /// A board is considered converged if it has repeated the same state
-    /// for the past [`HISTORY_LEN`] generations, or if it has alternated
-    /// between two states for the past [`HISTORY_LEN`] generations.
+    /// A board is considered converged if it has repeated the same state for the past [`HISTORY_LEN`] generations, or
+    /// if it has alternated between two states for the past [`HISTORY_LEN`] generations.
     pub fn converged(&self) -> bool {
         if self.generation < HISTORY_LEN {
             return false;
         }
 
-        let count0 = self
-            .history
-            .iter()
-            .filter(|&&h| h == self.history[0])
-            .count();
-        let count1 = self
-            .history
-            .iter()
-            .filter(|&&h| h == self.history[1])
-            .count();
+        let count0 = self.history.iter().filter(|&&h| h == self.history[0]).count();
+        let count1 = self.history.iter().filter(|&&h| h == self.history[1]).count();
 
         count0 == HISTORY_LEN || (count0 == HISTORY_LEN / 2 && count1 == HISTORY_LEN / 2)
     }
@@ -262,10 +235,7 @@ impl Cell {
 
     /// Creates a new empty cell.
     pub fn empty() -> Self {
-        Cell {
-            color: None,
-            age: 0,
-        }
+        Cell { color: None, age: 0 }
     }
 
     /// Returns `true` if the cell is alive or `false` if it is dead or empty.
@@ -273,8 +243,7 @@ impl Cell {
         self.color.is_some() && self.age == 0
     }
 
-    /// Returns `true` if the cell is empty or `false` if it is or was ever
-    /// alive.
+    /// Returns `true` if the cell is empty or `false` if it is or was ever alive.
     pub fn is_empty(&self) -> bool {
         self.color.is_none()
     }
@@ -283,21 +252,17 @@ impl Cell {
     ///
     /// The cell's next state is determined by these rules:
     ///
-    /// 1. Any live cell with fewer than two live neighbours of the same color
-    ///    dies, as if by underpopulation.
-    /// 2. Any live cell with two or three live neighbours of the same color
-    ///    survives.
-    /// 3. Any live cell with more than three live neighbours of any color dies,
-    ///    as if by overpopulation.
-    /// 4. Any dead cell with exactly three live neighbours of the same color
-    ///    becomes a live cell, as if by reproduction.
+    /// 1. Any live cell with fewer than two live neighbours of the same color dies, as if by underpopulation.
+    /// 2. Any live cell with two or three live neighbours of the same color survives.
+    /// 3. Any live cell with more than three live neighbours of any color dies, as if by overpopulation.
+    /// 4. Any dead cell with exactly three live neighbours of the same color becomes a live cell, as if by
+    ///    reproduction.
     ///
     /// Arguments
     /// =========
     ///
-    /// - `neighbors` - A slice of neighboring cells. This should contain
-    ///   exactly eight cells that are orthogonally and diagonally adjacent to
-    ///   this cell.
+    /// - `neighbors` - A slice of neighboring cells. This should contain exactly eight cells that are orthogonally and
+    ///   diagonally adjacent to this cell.
     ///
     /// Returns
     /// =======
@@ -305,10 +270,7 @@ impl Cell {
     /// A new [`Cell`] representing the next state.
     pub fn next(&self, neighbors: &[Cell]) -> Self {
         let living_neighbors = neighbors.iter().filter(|c| c.is_alive()).count();
-        let like_neighbors = neighbors
-            .iter()
-            .filter(|c| c.color == self.color && c.is_alive())
-            .count();
+        let like_neighbors = neighbors.iter().filter(|c| c.color == self.color && c.is_alive()).count();
 
         if self.is_alive() {
             if like_neighbors < 2 || like_neighbors > 3 {

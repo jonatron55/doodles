@@ -2,8 +2,11 @@
 // Licensed under the MIT-0 license.
 
 use std::{
+    backtrace::{Backtrace, BacktraceStatus},
     io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, stderr, stdout},
+    panic,
     process::exit,
+    thread,
     time::Duration,
 };
 
@@ -13,10 +16,7 @@ use crossterm::{
     event::{self, Event, KeyCode},
     execute,
     style::{Attribute, Attributes, Color, ContentStyle, PrintStyledContent},
-    terminal::{
-        Clear, ClearType, DisableLineWrap, EnableLineWrap, EnterAlternateScreen,
-        LeaveAlternateScreen,
-    },
+    terminal::{Clear, ClearType, DisableLineWrap, EnableLineWrap, EnterAlternateScreen, LeaveAlternateScreen},
 };
 
 use crate::common::vec::{UVec2, uvec2};
@@ -43,12 +43,7 @@ pub struct CommonArgs {
     /// between rendering each frame. If set to 0, the program will render
     /// frames as fast as possible. This option is incompatible with the
     /// `--interactive` option.
-    #[arg(
-        short = 'w',
-        long,
-        default_value_t = 32,
-        conflicts_with = "interactive"
-    )]
+    #[arg(short = 'w', long, default_value_t = 32, conflicts_with = "interactive")]
     wait: u64,
 }
 
@@ -65,210 +60,7 @@ pub enum WaitResult {
     Exit,
 }
 
-pub const BOLD_STYLES: [ContentStyle; 8] = [
-    ContentStyle {
-        foreground_color: Some(Color::DarkGrey),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Bold),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Red),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Bold),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Green),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Bold),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Yellow),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Bold),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Blue),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Bold),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Magenta),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Bold),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Cyan),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Bold),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::White),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Bold),
-    },
-];
-
-pub const STYLES: [ContentStyle; 8] = [
-    ContentStyle {
-        foreground_color: Some(Color::Grey),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Red),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Green),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Yellow),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Blue),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Magenta),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Cyan),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::White),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-];
-
-pub const MEDIUM_STYLES: [ContentStyle; 8] = [
-    ContentStyle {
-        foreground_color: Some(Color::DarkGrey),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::DarkRed),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::DarkGreen),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::DarkYellow),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::DarkBlue),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::DarkMagenta),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::DarkCyan),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Grey),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none(),
-    },
-];
-
-pub const DIM_STYLES: [ContentStyle; 8] = [
-    ContentStyle {
-        foreground_color: Some(Color::DarkGrey),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Dim),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::DarkRed),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Dim),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::DarkGreen),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Dim),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::DarkYellow),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Dim),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::DarkBlue),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Dim),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::DarkMagenta),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Dim),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::DarkCyan),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Dim),
-    },
-    ContentStyle {
-        foreground_color: Some(Color::Grey),
-        background_color: None,
-        underline_color: None,
-        attributes: Attributes::none().with(Attribute::Dim),
-    },
-];
-
+/// Style used for error messages.
 pub const ERROR_STYLE: ContentStyle = ContentStyle {
     foreground_color: Some(Color::Red),
     background_color: None,
@@ -304,12 +96,25 @@ pub fn setup_term() -> IoResult<()> {
         cleanup_term().unwrap();
         exit(1);
     })
-    .map_err(|err| {
-        IoError::new(
-            IoErrorKind::Other,
-            format!("Failed to set Ctrl+C handler: {}", err),
-        )
-    })?;
+    .map_err(|err| IoError::new(IoErrorKind::Other, format!("Failed to set Ctrl+C handler: {}", err)))?;
+
+    panic::set_hook(Box::new(|panic_info| {
+        let _ = cleanup_term();
+
+        if let Some(name) = thread::current().name() {
+            eprint!("Thread '{name}' ");
+        } else {
+            let id = thread::current().id();
+            eprint!("Thread {id:?} ");
+        }
+
+        eprintln!("{panic_info}");
+
+        let backtrace = Backtrace::capture();
+        if backtrace.status() == BacktraceStatus::Captured {
+            eprintln!("{backtrace}");
+        }
+    }));
 
     Ok(())
 }
@@ -382,10 +187,7 @@ impl CommonArgs {
                     Ok(Some(WaitResult::Exit))
                 }
                 Event::Key(ev) if ev.is_press() => Ok(Some(WaitResult::Continue)),
-                Event::Resize(width, height) => Ok(Some(WaitResult::Resize(uvec2(
-                    width as usize,
-                    height as usize,
-                )))),
+                Event::Resize(width, height) => Ok(Some(WaitResult::Resize(uvec2(width as usize, height as usize)))),
                 _ => Ok(None),
             }
         } else {

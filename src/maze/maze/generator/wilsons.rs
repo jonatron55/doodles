@@ -16,12 +16,13 @@ use crate::{
 
 /// A maze generator using Wilson's algorithm.
 ///
-/// This algorithm selects a cell at random to initialize the maze, then performs random walks from unvisited cells until
-/// they connect to the existing maze. If a walk intersects itself, the loop is erased and the walk continues from the
-/// point of intersection. The algorithm  continues until all cells have been visited
+/// This algorithm selects a cell at random to initialize the maze, then performs random walks from unvisited cells
+/// until they connect to the existing maze. If a walk intersects itself, the loop is erased and the walk continues from
+/// the point of intersection. The algorithm  continues until all cells have been visited
 ///
 /// Compared to other algorithms, Wilson's method tends to produce mazes with a more uniform distribution of passage
 /// lengths and dead ends. However, it can be very slow to converge for larger mazes.
+#[derive(Debug)]
 pub struct WilsonsMazeBuilder<'a> {
     maze: &'a mut Maze,
     open: Vec<UVec2>,
@@ -31,8 +32,8 @@ pub struct WilsonsMazeBuilder<'a> {
 impl<'a> WilsonsMazeBuilder<'a> {
     pub fn new<R: Rng>(maze: &'a mut Maze, rand: &mut R) -> Self {
         // Add all cells to the open set and shuffle it.
-        let mut open: Vec<_> = (0..maze.size.x)
-            .flat_map(|x| (0..maze.size.y).map(move |y| uvec2(x, y)))
+        let mut open: Vec<_> = (0..maze.size().x)
+            .flat_map(|x| (0..maze.size().y).map(move |y| uvec2(x, y)))
             .collect();
 
         open.shuffle(rand);
@@ -121,11 +122,6 @@ impl<'a> WilsonsMazeBuilder<'a> {
                     let Some(new_head) = self.pop_unvisited() else {
                         // No more open cells; maze generation is complete.
                         self.maze.invalidate();
-
-                        // Ensure the exit wall is open
-                        // let exit_idx = self.maze.cell_index(self.maze.size - UVec2::ONE);
-                        // self.maze.cells[exit_idx].remove(Cell::WALL_EAST);
-
                         return false;
                     };
 
@@ -148,8 +144,7 @@ impl<'a> WilsonsMazeBuilder<'a> {
     }
 
     pub fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
-        self.maze
-            .render(style, &[], &[], &AgentRenderStyle::default(), random_state)
+        self.maze.render(style, &[], &[], &AgentRenderStyle::default(), random_state)
     }
 
     /// Pop an unvisited cell from the open set.

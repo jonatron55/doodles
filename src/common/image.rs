@@ -1,5 +1,6 @@
 use crate::common::vec::{UVec2, uvec2};
 
+#[derive(Clone, Debug)]
 pub struct Image {
     size: UVec2,
     data: Vec<u8>,
@@ -37,7 +38,7 @@ impl Image {
             for x in 0..size.x {
                 let index = y * size.x + x;
                 let point = uvec2(x, y);
-                let d = point.manhattan_distance(center);
+                let d = point.manhattan_dist(center);
 
                 data[index] = if (d / ring_width) % 2 == 0 { 224 } else { 32 };
             }

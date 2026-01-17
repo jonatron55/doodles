@@ -3,10 +3,12 @@ Miscellaneous Rusty Doodles
 
 This repository implements several small terminal-based graphical programs in Rust.
 
-`sorty`
+`doodle`
 --------
 
-A collection of sort animations with customizable colors and rendering styles.
+A meta-program that plays random doodles from the collection below in sequence.
+
+[Usage instructions](./docs/doodle.md)
 
 `conway`
 --------
@@ -21,18 +23,31 @@ Conway's Game of Life, this implementation adds colour to the cells and modifies
 
 Boards can be loaded from a file. If no file is provided, a random board will be generated.
 
+[Usage instructions](./docs/conway.md)
+
 `digirain`
 ----------
 
 A "Matrix"-style digital rain animation. Colours can be specified as can the character set and length of the trails.
 
+[Usage instructions](./docs/digirain.md)
+
 `maze`
 ------
 
-Generates random mazes using a randomized depth-first search. Once the maze is generated, multiple agents will attempt
-to solve it using their own depth-first search.
+Generates random mazes using a variety of algorithms. Once the maze is generated, multiple agents will attempt to solve
+it using a depth-first search.
 
 Different rendering styles are available for the maze and the solving agents.
+
+[Usage instructions](./docs/maze.md)
+
+`sorty`
+-------
+
+A collection of sort animations with customizable colors and rendering styles.
+
+[Usage instructions](./docs/sorty.md)
 
 Building and Running
 --------------------

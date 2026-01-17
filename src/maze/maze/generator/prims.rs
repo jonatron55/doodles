@@ -22,6 +22,7 @@ use crate::{
 ///
 /// This algorithm tends to produce mazes with many short dead ends and has a more uniform distribution of passage
 /// lengths. It does not support a bias in passage direction.
+#[derive(Debug)]
 pub struct PrimsMazeBuilder<'a> {
     maze: &'a mut Maze,
 

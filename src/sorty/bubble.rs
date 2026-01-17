@@ -4,6 +4,7 @@
 use std::cmp::Ordering;
 
 /// Persisted state for bubble sort algorithm.
+#[derive(Clone, Copy, Debug)]
 pub struct BubbleState {
     /// `true` for left-to-right pass, `false` for right-to-left pass.
     direction: bool,
@@ -26,12 +27,7 @@ pub struct BubbleState {
 /// -------
 ///
 /// `true` if the sorting is complete, `false` if more steps are needed.
-pub fn step_bubble(
-    values: &mut [usize],
-    width: usize,
-    ordering: Ordering,
-    state: &mut BubbleState,
-) -> bool {
+pub fn step_bubble(values: &mut [usize], width: usize, ordering: Ordering, state: &mut BubbleState) -> bool {
     let i = if state.direction {
         state.index
     } else {

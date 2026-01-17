@@ -6,7 +6,7 @@
       "externalConsole": true,
       "name": "Debug (cppvsdbg)",
       "preLaunchTask": "Build (debug)",
-      "program": "${workspaceFolder}/target/debug/digirain.exe",
+      "program": "${workspaceFolder}/target/debug/doodles.exe",
       "request": "launch",
       "type": "cppvsdbg"
     }

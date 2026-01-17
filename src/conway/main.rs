@@ -16,24 +16,17 @@ mod renderer;
 
 /// Conway's Game of Life simulator and renderer.
 ///
-/// This program reads an initial board configuration from a file, and simulates
-/// Conway's Game of Life, rendering the board to the terminal using colored
-/// output.
+/// This program reads an initial board configuration from a file, and simulates Conway's Game of Life, rendering the
+/// board to the terminal using colored output.
 ///
-/// In addition to the usual rules of Conway's Game of Life, this implementation
-/// includes colored cells, which modifies the rules as follows:
+/// In addition to the usual rules of Conway's Game of Life, this implementation includes colored cells, which modifies
+/// the rules as follows:
 ///
-/// 1. Any live cell with fewer than two live neighbours **of the same color**
-///    dies, as if by underpopulation.
-///
-/// 2. Any live cell with two or three live neighbours **of the same color**
-///    survives.
-///
-/// 3. Any live cell with more than three live neighbours **of any color** dies,
-///    as if by overpopulation.
-///
-/// 4. Any dead cell with exactly three live neighbours **of the same color**
-///    becomes a live cell, as if by reproduction.
+/// 1. Any live cell with fewer than two live neighbours **of the same color** dies, as if by underpopulation.
+/// 2. Any live cell with two or three live neighbours **of the same color** survives.
+/// 3. Any live cell with more than three live neighbours **of any color** dies, as if by overpopulation.
+/// 4. Any dead cell with exactly three live neighbours **of the same color** becomes a live cell, as if by
+///    reproduction.
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about)]
 struct Args {
@@ -42,20 +35,17 @@ struct Args {
 
     /// Path to the board file to render.
     ///
-    /// Board files should be plain text and contain rows of cells where white
-    /// spaces represent dead cells and any other alphanumeric character
-    /// represents a living cell. If no path is provided, a random board will be
-    /// generated.
+    /// Board files should be plain text and contain rows of cells where white spaces represent dead cells and any other
+    /// alphanumeric character represents a living cell. If no path is provided, a random board will be generated.
     #[arg()]
     path: Option<PathBuf>,
 
     /// Maximum number of generations to simulate (0 for no limit).
     ///
-    /// Once this limit is reached, the board will reset to the initial state
-    /// read from the file.
+    /// Once this limit is reached, the board will reset to the initial state read from the file.
     ///
-    /// If not specified, the simulation will continue until the board
-    /// converges to either a stable or oscillating state.
+    /// If not specified, the simulation will continue until the board converges to either a stable or oscillating
+    /// state.
     #[arg(short = 'm', long, default_value_t = 0)]
     max: usize,
 }

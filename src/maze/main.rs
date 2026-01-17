@@ -25,10 +25,8 @@ use rand::seq::SliceRandom;
 
 use crate::{
     agent::{Agent, RenderStyle as AgentRenderStyle},
-    maze::{
-        BiasMode, Maze, MazeBuilder, RenderStyle as MazeRenderStyle, WallStyle,
-        dfs::DfsMazeBuilder, prims::PrimsMazeBuilder, wilsons::WilsonsMazeBuilder,
-    },
+    maze::generator::{DfsMazeBuilder, PrimsMazeBuilder, WilsonsMazeBuilder},
+    maze::{BiasMode, Maze, MazeBuilder, RenderStyle as MazeRenderStyle, WallStyle},
     trinket::Trinket,
 };
 
@@ -68,12 +66,7 @@ pub struct Args {
     trinkets: bool,
 
     /// Prevent trinkets from being placed in the maze.
-    #[clap(
-        short = 'T',
-        long,
-        default_value_t = false,
-        conflicts_with = "trinkets"
-    )]
+    #[clap(short = 'T', long, default_value_t = false, conflicts_with = "trinkets")]
     no_trinkets: bool,
 
     #[clap(flatten)]
@@ -101,6 +94,12 @@ enum MazeRenderArg {
 
     /// Hedge-style walls.
     Hedge = 5,
+
+    /// Block-style outer walls with fence-style inner walls.
+    BlockFence = 6,
+
+    /// Fence-style walls.
+    Fence = 7,
 }
 
 #[derive(ValueEnum, Clone, Copy, Debug)]
@@ -137,7 +136,7 @@ pub struct BiasArg {
 }
 
 /// Predefined maze render styles corresponding to `MazeRenderArg`.
-const MAZE_STYLES: [MazeRenderStyle; 6] = [
+const MAZE_STYLES: [MazeRenderStyle; 8] = [
     MazeRenderStyle {
         outer: WallStyle::Solid,
         inner: WallStyle::Solid,
@@ -168,6 +167,16 @@ const MAZE_STYLES: [MazeRenderStyle; 6] = [
         inner: WallStyle::Hedge,
         color: Color::White,
     },
+    MazeRenderStyle {
+        outer: WallStyle::Block,
+        inner: WallStyle::Fence,
+        color: Color::White,
+    },
+    MazeRenderStyle {
+        outer: WallStyle::Fence,
+        inner: WallStyle::Fence,
+        color: Color::White,
+    },
 ];
 
 fn main() -> IoResult<()> {
@@ -195,17 +204,12 @@ fn main() -> IoResult<()> {
         let mut size = UVec2::from(terminal::size()?);
         let random_state = RandomState::new();
 
-        let maze_style = args
-            .maze_style
-            .unwrap_or_else(|| MazeRenderArg::choose(&mut rand));
+        let maze_style = args.maze_style.unwrap_or_else(|| MazeRenderArg::choose(&mut rand));
         let maze_style = MAZE_STYLES[maze_style as usize].clone();
 
-        let maze_style =
-            maze_style.with_color(args.color.unwrap_or_else(|| Color::choose(&mut rand)));
+        let maze_style = maze_style.with_color(args.color.unwrap_or_else(|| Color::choose(&mut rand)));
 
-        let agent_style = args
-            .agent_style
-            .unwrap_or_else(|| AgentRenderStyle::choose(&mut rand));
+        let agent_style = args.agent_style.unwrap_or_else(|| AgentRenderStyle::choose(&mut rand));
 
         // Calculate maze dimensions based on terminal size. Each cell is 2x2 characters, plus a 1-character border.
         size = (size - UVec2::ONE) / 2;
@@ -226,10 +230,7 @@ fn main() -> IoResult<()> {
                     BiasMode::Image(Image::new_concentric(size, ring_width))
                 } else {
                     cleanup_term()?;
-                    eprintln!(
-                        "Bias image path '{}' does not exist.",
-                        bias_image_path.display()
-                    );
+                    eprintln!("Bias image path '{}' does not exist.", bias_image_path.display());
                     return Err(IoError::from(IoErrorKind::NotFound));
                 }
             }
@@ -247,21 +248,17 @@ fn main() -> IoResult<()> {
             }
         };
 
-        let algorithm = args
-            .algorithm
-            .unwrap_or_else(|| match rand.random_range(0..2) {
-                0 => MazeAlgorithm::Dfs,
-                1 => MazeAlgorithm::Wilsons,
-                2 => MazeAlgorithm::Prims,
-                _ => unreachable!(),
-            });
+        let algorithm = args.algorithm.unwrap_or_else(|| match rand.random_range(0..3) {
+            0 => MazeAlgorithm::Dfs,
+            1 => MazeAlgorithm::Wilsons,
+            2 => MazeAlgorithm::Prims,
+            _ => unreachable!(),
+        });
 
         let mut builder = match algorithm {
             MazeAlgorithm::Dfs => MazeBuilder::Dfs(DfsMazeBuilder::new(&mut maze, &mut rand)),
             MazeAlgorithm::Prims => MazeBuilder::Prims(PrimsMazeBuilder::new(&mut maze, &mut rand)),
-            MazeAlgorithm::Wilsons => {
-                MazeBuilder::Wilsons(WilsonsMazeBuilder::new(&mut maze, &mut rand))
-            }
+            MazeAlgorithm::Wilsons => MazeBuilder::Wilsons(WilsonsMazeBuilder::new(&mut maze, &mut rand)),
         };
 
         'build: loop {
@@ -289,13 +286,7 @@ fn main() -> IoResult<()> {
         };
 
         for i in 0..trinkets.len() {
-            maze.render(
-                &maze_style,
-                &[],
-                &trinkets[0..i],
-                &agent_style,
-                &random_state,
-            )?;
+            maze.render(&maze_style, &[], &trinkets[0..i], &agent_style, &random_state)?;
         }
 
         let mut agents = (0..args.agents)
@@ -349,7 +340,7 @@ fn main() -> IoResult<()> {
 
 impl MazeRenderArg {
     pub fn choose<R: Rng>(rand: &mut R) -> Self {
-        let value = rand.random_range(0..6);
+        let value = rand.random_range(0..8);
         MazeRenderArg::from(value)
     }
 }
@@ -369,6 +360,8 @@ impl FromStr for MazeRenderArg {
                 "B" | "BLOCK" => Ok(MazeRenderArg::Block),
                 "G" | "BLOCKHEDGE" => Ok(MazeRenderArg::BlockHedge),
                 "H" | "HEDGE" => Ok(MazeRenderArg::Hedge),
+                "E" | "BLOCKFENCE" => Ok(MazeRenderArg::BlockFence),
+                "F" | "FENCE" => Ok(MazeRenderArg::Fence),
                 _ => Err(()),
             }
         }
@@ -383,13 +376,15 @@ impl Into<u8> for MazeRenderArg {
 
 impl From<u8> for MazeRenderArg {
     fn from(value: u8) -> Self {
-        match value % 6 {
+        match value % 8 {
             0 => MazeRenderArg::Plain,
             1 => MazeRenderArg::Curved,
             2 => MazeRenderArg::Double,
             3 => MazeRenderArg::Block,
             4 => MazeRenderArg::BlockHedge,
             5 => MazeRenderArg::Hedge,
+            6 => MazeRenderArg::BlockFence,
+            7 => MazeRenderArg::Fence,
             _ => unreachable!(),
         }
     }
@@ -404,6 +399,8 @@ impl ValueEnum for MazeRenderArg {
             MazeRenderArg::Block,
             MazeRenderArg::BlockHedge,
             MazeRenderArg::Hedge,
+            MazeRenderArg::BlockFence,
+            MazeRenderArg::Fence,
         ]
     }
 
@@ -413,10 +410,10 @@ impl ValueEnum for MazeRenderArg {
             MazeRenderArg::Curved => Some(PossibleValue::new("curved").alias("c").alias("1")),
             MazeRenderArg::Double => Some(PossibleValue::new("double").alias("d").alias("2")),
             MazeRenderArg::Block => Some(PossibleValue::new("block").alias("b").alias("3")),
-            MazeRenderArg::BlockHedge => {
-                Some(PossibleValue::new("blockhedge").alias("g").alias("4"))
-            }
+            MazeRenderArg::BlockHedge => Some(PossibleValue::new("blockhedge").alias("g").alias("4")),
             MazeRenderArg::Hedge => Some(PossibleValue::new("hedge").alias("h").alias("5")),
+            MazeRenderArg::BlockFence => Some(PossibleValue::new("blockfence").alias("e").alias("6")),
+            MazeRenderArg::Fence => Some(PossibleValue::new("fence").alias("f").alias("7")),
         }
     }
 }

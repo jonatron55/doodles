@@ -18,9 +18,10 @@ use rand::{
 use crate::{Args, ColorArg};
 
 /// Default alphabet to use if none is provided.
-const DEFAULT_ALPHABET: &str = include_str!("alphabet.txt");
+const DEFAULT_ALPHABET: &str = include_str!("alphabets/alphabet.txt");
 
 /// A board of cells for the Digital Rain effect.
+#[derive(Clone, Debug)]
 pub struct Board {
     /// Dimensions of the board in characters.
     size: UVec2,
@@ -35,7 +36,7 @@ pub struct Board {
 /// A single cell on the board.
 ///
 /// Empty cells have age `u32::MAX` and content `'\0'`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Cell {
     /// Number of frames since the cell was spawned.
     pub age: u32,
@@ -140,16 +141,13 @@ impl Board {
                         let continue_trail = match cell.trail_length {
                             len if len < args.min_trail => true, // Below minimum trail length; always continue.
                             len if len >= args.max_trail => false, // Above maximum trail length; never continue.
-                            _ => trail.sample(rand), // Between min and max; continue at random.
+                            _ => trail.sample(rand),             // Between min and max; continue at random.
                         };
 
                         if continue_trail {
                             let lower = self.cell_index(x, y + 1);
-                            self.buffers.1[lower] = Cell::new_head(
-                                *self.alphabet.choose(rand).unwrap(),
-                                cell.trail_length + 1,
-                                cell.color,
-                            );
+                            self.buffers.1[lower] =
+                                Cell::new_head(*self.alphabet.choose(rand).unwrap(), cell.trail_length + 1, cell.color);
                         }
                     }
 
@@ -160,14 +158,11 @@ impl Board {
                     let color = match color {
                         ColorArg::Color(color) => *color,
                         ColorArg::Cycle => Color::from(
-                            ((frame.wrapping_mul(2) / ((args.lifespan as usize).saturating_mul(3)))
-                                % 7
-                                + 1) as u8,
+                            ((frame.wrapping_mul(2) / ((args.lifespan as usize).saturating_mul(3))) % 7 + 1) as u8,
                         ),
                         ColorArg::Random => Color::choose(rand),
                     };
-                    self.buffers.1[index] =
-                        Cell::new_head(*self.alphabet.choose(rand).unwrap(), 1, color);
+                    self.buffers.1[index] = Cell::new_head(*self.alphabet.choose(rand).unwrap(), 1, color);
                 }
             }
         }

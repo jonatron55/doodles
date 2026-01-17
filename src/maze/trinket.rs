@@ -17,6 +17,7 @@ const TRINKET_COLORS: [Color; 6] = [
     Color::Magenta,
 ];
 
+#[derive(Clone, Debug)]
 pub struct Trinket {
     pub position: UVec2,
     character: char,
@@ -24,6 +25,7 @@ pub struct Trinket {
     state: TrinketState,
 }
 
+#[derive(Clone, Debug)]
 enum TrinketState {
     Idle { frame: u8 },
     Collected { frame: u8 },
@@ -31,9 +33,7 @@ enum TrinketState {
 
 impl Trinket {
     pub fn new_collection(positions: &[UVec2]) -> Vec<Trinket> {
-        let count = positions
-            .len()
-            .min(TRINKET_CHARS.len() * TRINKET_COLORS.len());
+        let count = positions.len().min(TRINKET_CHARS.len() * TRINKET_COLORS.len());
         let mut trinkets = Vec::with_capacity(count);
 
         for i in 0..count {
@@ -43,9 +43,7 @@ impl Trinket {
                 position: positions[i],
                 character: TRINKET_CHARS[char_idx],
                 color: TRINKET_COLORS[color_idx],
-                state: TrinketState::Idle {
-                    frame: i as u8 % 32,
-                },
+                state: TrinketState::Idle { frame: i as u8 % 32 },
             });
         }
 

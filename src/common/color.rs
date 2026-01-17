@@ -7,10 +7,8 @@ use std::{
 };
 
 use clap::{ValueEnum, builder::PossibleValue};
-use crossterm::style::{Color as TermColor, ContentStyle};
+use crossterm::style::{Attribute, Attributes, Color as TermColor, ContentStyle};
 use rand::Rng;
-
-use crate::common::term::{BOLD_STYLES, DIM_STYLES, MEDIUM_STYLES, STYLES};
 
 /// A primary terminal color.
 ///
@@ -50,22 +48,42 @@ impl Color {
 
     /// Returns the corresponding [`ContentStyle`] from [`STYLES`].
     pub fn style(&self) -> ContentStyle {
-        STYLES[*self as usize]
+        ContentStyle {
+            foreground_color: Some(self.to_term_color()),
+            background_color: None,
+            underline_color: None,
+            attributes: Attributes::none(),
+        }
     }
 
     /// Returns the corresponding bold [`ContentStyle`] from [`BOLD_STYLES`].
     pub fn bold_style(&self) -> ContentStyle {
-        BOLD_STYLES[*self as usize]
+        ContentStyle {
+            foreground_color: Some(self.to_term_color()),
+            background_color: None,
+            underline_color: None,
+            attributes: Attributes::none().with(Attribute::Bold),
+        }
     }
 
     /// Returns the corresponding dim [`ContentStyle`] from [`MEDIUM_STYLES`].
     pub fn medium_style(&self) -> ContentStyle {
-        MEDIUM_STYLES[*self as usize]
+        ContentStyle {
+            foreground_color: Some(self.to_dark_term_color()),
+            background_color: None,
+            underline_color: None,
+            attributes: Attributes::none(),
+        }
     }
 
     /// Returns the corresponding dim [`ContentStyle`] from [`DIM_STYLES`].
     pub fn dim_style(&self) -> ContentStyle {
-        DIM_STYLES[*self as usize]
+        ContentStyle {
+            foreground_color: Some(self.to_dark_term_color()),
+            background_color: None,
+            underline_color: None,
+            attributes: Attributes::none().with(Attribute::Dim),
+        }
     }
 
     /// Returns the corresponding dark [`crossterm::style::Color`].

@@ -4,12 +4,14 @@
 use std::cmp::Ordering;
 
 /// Persisted state for quicksort algorithm.
+#[derive(Clone, Debug)]
 pub struct QsortState {
     /// Stack of substates for each recursive step.
     stack: Vec<Substate>,
 }
 
 /// Persisted substate for a single quicksort partitioning step.
+#[derive(Clone, Debug)]
 struct Substate {
     /// Lower bound of the current subslice.
     low: usize,
@@ -47,13 +49,7 @@ pub fn step_qsort(values: &mut [usize], ordering: Ordering, state: &mut QsortSta
         return true;
     };
 
-    let Substate {
-        low,
-        high,
-        pivot,
-        i,
-        j,
-    } = substate;
+    let Substate { low, high, pivot, i, j } = substate;
 
     if j > high {
         // Partitioning step complete; place pivot in correct position and recurse

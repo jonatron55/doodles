@@ -21,12 +21,14 @@ use crate::{
 /// backtracks until it finds a cell with unvisited neighbors. This continues until all cells have been visited.
 ///
 /// This algorithm tends to produce mazes with long, winding passages and few short dead ends.
+#[derive(Debug)]
 pub struct DfsMazeBuilder<'a> {
     maze: &'a mut Maze,
     open: Vec<DfsOpenCell>,
 }
 
 /// A cell that has been encountered during DFS maze generation but not yet visited.
+#[derive(Clone, Copy, Debug)]
 struct DfsOpenCell {
     /// Position of the cell.
     head: UVec2,
@@ -37,10 +39,7 @@ struct DfsOpenCell {
 
 impl<'a> DfsMazeBuilder<'a> {
     pub fn new<R: Rng>(maze: &'a mut Maze, rand: &mut R) -> Self {
-        let initial = uvec2(
-            rand.random_range(0..maze.size.x),
-            rand.random_range(0..maze.size.y),
-        );
+        let initial = uvec2(rand.random_range(0..maze.size.x), rand.random_range(0..maze.size.y));
 
         DfsMazeBuilder {
             maze,
@@ -64,7 +63,9 @@ impl<'a> DfsMazeBuilder<'a> {
         self.maze.cells[head_idx].insert(Cell::VISITED);
 
         // Remove wall between current and previous cell.
-        self.maze.tunnel_between(from, head);
+        if from != head {
+            self.maze.tunnel_between(from, head);
+        }
 
         // Push unvisited neighbors in random order.
         let bias = bias.sample(head);
@@ -77,10 +78,7 @@ impl<'a> DfsMazeBuilder<'a> {
 
             let next_idx = self.maze.cell_index(next);
             if !self.maze.cells[next_idx].contains(Cell::VISITED) {
-                self.open.push(DfsOpenCell {
-                    head: next,
-                    from: head,
-                });
+                self.open.push(DfsOpenCell { head: next, from: head });
             }
         }
 
@@ -90,8 +88,7 @@ impl<'a> DfsMazeBuilder<'a> {
     }
 
     pub fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
-        self.maze
-            .render(style, &[], &[], &AgentRenderStyle::default(), random_state)
+        self.maze.render(style, &[], &[], &AgentRenderStyle::default(), random_state)
     }
 
     /// Pop the next unvisited open cell from the stack, skipping any that have already been visited.

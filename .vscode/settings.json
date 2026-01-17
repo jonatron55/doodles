@@ -2,6 +2,11 @@
   "[json][markdown][xml][yaml]": {
     "editor.indentSize": 2
   },
+  "[markdown][rust]": {
+    "editor.rulers": [
+      120
+    ]
+  },
   "[plaintext]": {
     "editor.formatOnSave": false,
     "editor.indentSize": 1,
