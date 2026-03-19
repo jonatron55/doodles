@@ -14,7 +14,7 @@ use rand::{
     },
 };
 
-const HISTORY_LEN: usize = 16;
+const HISTORY_LEN: usize = 64;
 
 /// Represents the state of a Conway's Game of Life board.
 ///
@@ -74,7 +74,7 @@ impl Board {
         }
     }
 
-    pub fn with_random_cells<R: Rng>(mut self, rand: &mut R, density: f64) -> Self {
+    pub fn with_random_cells(mut self, rand: &mut impl Rng, density: f64) -> Self {
         let spawn = Bernoulli::new(density).unwrap();
         let colors = [rand.random_range(1..7), rand.random_range(1..7)];
         let color_index = UniformUsize::new(0, 2).unwrap();
@@ -202,17 +202,27 @@ impl Board {
 
     /// Returns `true` if the board has converged to a stable or oscillating state.
     ///
-    /// A board is considered converged if it has repeated the same state for the past [`HISTORY_LEN`] generations, or
-    /// if it has alternated between two states for the past [`HISTORY_LEN`] generations.
+    /// A board is considered converged if the last [`HISTORY_LEN`] generations form a repeating pattern with any
+    /// period from 1 up to `HISTORY_LEN / 2`. This detects still lifes (period 1), common oscillators like blinkers
+    /// (period 2) and pulsars (period 3), as well as boards that combine oscillators of different periods (e.g.
+    /// period 6 from a mix of period-2 and period-3 patterns).
     pub fn converged(&self) -> bool {
         if self.generation < HISTORY_LEN {
             return false;
         }
 
-        let count0 = self.history.iter().filter(|&&h| h == self.history[0]).count();
-        let count1 = self.history.iter().filter(|&&h| h == self.history[1]).count();
+        let max_period = HISTORY_LEN / 2;
+        (1..=max_period).any(|period| self.is_periodic(period))
+    }
 
-        count0 == HISTORY_LEN || (count0 == HISTORY_LEN / 2 && count1 == HISTORY_LEN / 2)
+    /// Returns `true` if the board history is periodic with the given period.
+    ///
+    /// Checks that every generation hash in the history buffer matches the hash from `period` generations earlier.
+    fn is_periodic(&self, period: usize) -> bool {
+        let newest = self.generation - 1;
+        let oldest = self.generation - HISTORY_LEN + period;
+
+        (oldest..=newest).all(|g| self.history[g % HISTORY_LEN] == self.history[(g - period) % HISTORY_LEN])
     }
 
     fn current_buffer(&self) -> &Vec<Cell> {

@@ -409,7 +409,7 @@ impl RenderStyle {
 
 impl MazeBuilder<'_> {
     /// Build the next step of the maze generation.
-    pub fn build_next<R: Rng>(&mut self, rand: &mut R, bias: &BiasMode) -> bool {
+    pub fn build_next(&mut self, rand: &mut impl Rng, bias: &BiasMode) -> bool {
         match self {
             MazeBuilder::Dfs(builder) => builder.build_next(rand, bias),
             MazeBuilder::Prims(builder) => builder.build_next(rand),

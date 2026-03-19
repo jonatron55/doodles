@@ -33,7 +33,7 @@ impl Direction {
     pub const ALL: [Self; 4] = [Direction::North, Direction::East, Direction::South, Direction::West];
 
     /// Choose a random direction.
-    pub fn choose<R: Rng>(rand: &mut R) -> Self {
+    pub fn choose(rand: &mut impl Rng) -> Self {
         match rand.random_range(0..4) {
             0 => Direction::North,
             1 => Direction::East,
@@ -48,7 +48,7 @@ impl Direction {
     /// The `bias` parameter controls the likelihood of horizontal directions appearing before vertical directions. A
     /// bias of `1.0` means vertical directions will always come first, while a bias of `0.0` means horizontal
     /// directions will always come first. A bias of `0.5` results in a uniform random shuffle.
-    pub fn biased_shuffle<R: Rng>(rand: &mut R, bias: f64) -> [Self; 4] {
+    pub fn biased_shuffle(rand: &mut impl Rng, bias: f64) -> [Self; 4] {
         let horz = if rand.random_bool(0.5) {
             (Direction::East, Direction::West)
         } else {
@@ -143,7 +143,7 @@ impl Direction {
 
 impl Directions {
     /// Choose a random direction from the set.
-    pub fn choose<R: Rng>(&self, rand: &mut R) -> Option<Direction> {
+    pub fn choose(&self, rand: &mut impl Rng) -> Option<Direction> {
         self.iter().choose(rand).and_then(|d| d.try_into().ok())
     }
 

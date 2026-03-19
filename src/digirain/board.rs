@@ -98,12 +98,12 @@ impl Board {
 
     /// Advance the board by one frame, consuming the current board and producing `Some(new_board)` if there are still
     /// cells alive, or `None` if the board is completely dead.
-    pub fn next<R: Rng>(
+    pub fn next(
         mut self,
         args: &Args,
         frame: usize,
         color: &ColorArg,
-        rand: &mut R,
+        rand: &mut impl Rng,
         dead: bool,
     ) -> Option<Self> {
         self.buffers.1.fill(Cell::default());
@@ -111,12 +111,12 @@ impl Board {
         // Random distribution for spawning new head cells. Will be rolled for each empty cell.
         let spawn = Bernoulli::new(f64::saturating_lerp(
             0.0,
-            args.spawnprob,
+            args.spawnprob * 0.01,
             (frame as f64 / args.warmup as f64).powi(2),
         ))
         .unwrap();
 
-        let mutate = Bernoulli::new(args.mutateprob).unwrap();
+        let mutate = Bernoulli::new(args.mutateprob * 0.01).unwrap();
 
         // Random distribution for continuing trails. Will be rolled for each cell with a `trail_length` between
         // `min_trail` and `max_trail` (cells shorter than `min_trail` always continue and cells longer than `max_trail`

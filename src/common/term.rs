@@ -53,6 +53,9 @@ pub enum WaitResult {
     /// The wait completed and the animation should continue.
     Continue,
 
+    /// A key was pressed and the current animation should end and the next should begin.
+    Next,
+
     /// The screen was resized and the animation should adjust accordingly.
     Resize(UVec2),
 
@@ -156,9 +159,9 @@ impl CommonArgs {
     pub fn wait(&self) -> IoResult<WaitResult> {
         loop {
             let result = if self.interactive {
-                self.handle_event()?
+                Some(self.handle_event()?)
             } else if let Ok(true) = event::poll(Duration::from_millis(self.wait)) {
-                self.handle_event()?
+                Some(self.handle_event()?)
             } else {
                 None
             };
@@ -176,22 +179,19 @@ impl CommonArgs {
         }
     }
 
-    fn handle_event(&self) -> IoResult<Option<WaitResult>> {
+    fn handle_event(&self) -> IoResult<WaitResult> {
         if let Ok(event) = event::read() {
             match event {
-                Event::Key(ev)
-                    if ev.is_press()
-                        && !ev.is_repeat()
-                        && (ev.code == KeyCode::Esc || ev.code == KeyCode::Char('q')) =>
-                {
-                    Ok(Some(WaitResult::Exit))
-                }
-                Event::Key(ev) if ev.is_press() => Ok(Some(WaitResult::Continue)),
-                Event::Resize(width, height) => Ok(Some(WaitResult::Resize(uvec2(width as usize, height as usize)))),
-                _ => Ok(None),
+                Event::Key(ev) if ev.is_press() && !ev.is_repeat() => match ev.code {
+                    KeyCode::Esc | KeyCode::Char('q') => Ok(WaitResult::Exit),
+                    KeyCode::Right | KeyCode::Tab => Ok(WaitResult::Next),
+                    _ => Ok(WaitResult::Continue),
+                },
+                Event::Resize(width, height) => Ok(WaitResult::Resize(uvec2(width as usize, height as usize))),
+                _ => Ok(WaitResult::Continue),
             }
         } else {
-            Ok(None)
+            Ok(WaitResult::Continue)
         }
     }
 }

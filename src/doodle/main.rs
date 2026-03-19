@@ -11,22 +11,26 @@ struct Doodle {
     args: &'static [&'static str],
 }
 
-const DOODLES: [Doodle; 4] = [
-    Doodle {
-        name: "sorty",
-        args: &["--wait=0", "--iter=1"],
-    },
+const DOODLES: [Doodle; 5] = [
     Doodle {
         name: "conway",
         args: &["--wait=48", "--iter=1"],
     },
     Doodle {
         name: "digirain",
-        args: &["--wait=64", "--iter=512"],
+        args: &["--wait=64", "--frames=1024", "--iter=1"],
     },
     Doodle {
         name: "maze",
-        args: &["--wait=32", "--iter=1"],
+        args: &["--wait=16", "--iter=1"],
+    },
+    Doodle {
+        name: "ripples",
+        args: &["--wait=16", "--frames=1024", "--iter=1"],
+    },
+    Doodle {
+        name: "sorty",
+        args: &["--wait=0", "--algo=qsort", "--iter=1"],
     },
 ];
 

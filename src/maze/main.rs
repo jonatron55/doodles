@@ -270,7 +270,7 @@ fn main() -> IoResult<()> {
 
             match args.common.wait()? {
                 WaitResult::Continue => {}
-                WaitResult::Resize(_) => continue 'outer,
+                WaitResult::Next | WaitResult::Resize(_) => continue 'outer,
                 WaitResult::Exit => break 'outer,
             }
         }
@@ -325,7 +325,7 @@ fn main() -> IoResult<()> {
 
             match args.common.wait()? {
                 WaitResult::Continue => {}
-                WaitResult::Resize(_) => continue 'outer,
+                WaitResult::Next | WaitResult::Resize(_) => continue 'outer,
                 WaitResult::Exit => break 'outer,
             }
         }
@@ -339,7 +339,7 @@ fn main() -> IoResult<()> {
 }
 
 impl MazeRenderArg {
-    pub fn choose<R: Rng>(rand: &mut R) -> Self {
+    pub fn choose(rand: &mut impl Rng) -> Self {
         let value = rand.random_range(0..8);
         MazeRenderArg::from(value)
     }

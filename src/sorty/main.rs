@@ -117,11 +117,13 @@ fn main() -> IoResult<()> {
             SortState::Bubble(state) => step_bubble(&mut actual, size.x, ordering, state),
             SortState::QSort(state) => step_qsort(&mut actual, ordering, state),
         } {
-            while displayed != actual {
-                renderer::render(&mut displayed, &actual, size, colors, style, ordering)?;
+            let mut converged = false;
+            while !converged {
+                converged = renderer::render(&mut displayed, &actual, size, colors, style, ordering)?;
 
                 match args.common.wait()? {
                     WaitResult::Continue => {}
+                    WaitResult::Next => continue 'outer,
                     WaitResult::Resize(new_size) => {
                         size = new_size;
                         actual = (0..size.x).map(|x| 8 * x * size.y / size.x).collect();

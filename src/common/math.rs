@@ -14,6 +14,9 @@ pub trait Lerp<T: Copy + PartialOrd> {
     /// This function clamps the interpolant `t` between `0` and `1`, ensuring the result always lies within the range
     /// defined by `a` and `b`.
     fn saturating_lerp(a: T, b: T, t: T) -> T;
+
+    /// Computes the interpolant `t` such that `lerp(a, b, t) == value`.
+    fn inverse_lerp(a: T, b: T, value: T) -> T;
 }
 
 impl Lerp<f32> for f32 {
@@ -26,6 +29,10 @@ impl Lerp<f32> for f32 {
     fn saturating_lerp(a: f32, b: f32, t: f32) -> f32 {
         Self::lerp(a, b, t.clamp(0.0, 1.0))
     }
+
+    fn inverse_lerp(a: f32, b: f32, value: f32) -> f32 {
+        (value - a) / (b - a)
+    }
 }
 
 impl Lerp<f64> for f64 {
@@ -37,5 +44,9 @@ impl Lerp<f64> for f64 {
 
     fn saturating_lerp(a: f64, b: f64, t: f64) -> f64 {
         Self::lerp(a, b, t.clamp(0.0, 1.0))
+    }
+
+    fn inverse_lerp(a: f64, b: f64, value: f64) -> f64 {
+        (value - a) / (b - a)
     }
 }

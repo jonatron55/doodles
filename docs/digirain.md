@@ -68,13 +68,13 @@ Minimum trail length for each stream
 
 Probability of spawning a new stream in each cell per frame
 
-*default: 0.005*
+*default: 0.5*
 
 #### `-m`, `--mutateprob <MUTATEPROB>` ####
 
 Probability of mutating an existing character in each cell per frame
 
-*default: 0.15*
+*default: 15*
 
 #### `-c`, `--color <COLOR>` ####
 
@@ -91,6 +91,10 @@ Number of frames to "warm up" the effect before reaching full spawn probability
 #### `-F`, `--fullwidth` ####
 
 Layout the characters using fullwidth glyphs
+
+#### `-t`, `--frames <FRAMES>` ####
+
+Total number of frames to render
 
 #### `-h`, `--help` ####
 

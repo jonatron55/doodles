@@ -110,7 +110,7 @@ impl<'a> Agent<'a> {
 
     /// Update the agent's state by performing one step of a randomized depth-first search. This will have no effect if
     /// the agent has already halted.
-    pub fn update<R: Rng>(&mut self, trinkets: &mut [Trinket], rand: &mut R) {
+    pub fn update(&mut self, trinkets: &mut [Trinket], rand: &mut impl Rng) {
         match &self.state {
             State::Thinking => {
                 // We are at a junction. If there are any unexplored paths from here, then take one at random.
@@ -242,7 +242,7 @@ impl<'a> Agent<'a> {
 
 impl RenderStyle {
     /// Choose a random render style.
-    pub fn choose<R: Rng>(rand: &mut R) -> Self {
+    pub fn choose(rand: &mut impl Rng) -> Self {
         let value = rand.random_range(0..4);
         RenderStyle::from(value)
     }

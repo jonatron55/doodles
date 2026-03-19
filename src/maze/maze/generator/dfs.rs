@@ -38,7 +38,7 @@ struct DfsOpenCell {
 }
 
 impl<'a> DfsMazeBuilder<'a> {
-    pub fn new<R: Rng>(maze: &'a mut Maze, rand: &mut R) -> Self {
+    pub fn new(maze: &'a mut Maze, rand: &mut impl Rng) -> Self {
         let initial = uvec2(rand.random_range(0..maze.size.x), rand.random_range(0..maze.size.y));
 
         DfsMazeBuilder {
@@ -50,7 +50,7 @@ impl<'a> DfsMazeBuilder<'a> {
         }
     }
 
-    pub fn build_next<R: Rng>(&mut self, rand: &mut R, bias: &BiasMode) -> bool {
+    pub fn build_next(&mut self, rand: &mut impl Rng, bias: &BiasMode) -> bool {
         // Get the next unvisited cell.
         let Some(DfsOpenCell { head, from }) = self.pop_unvisited() else {
             // No more open cells; maze generation is complete.

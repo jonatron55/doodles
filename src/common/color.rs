@@ -27,9 +27,15 @@ pub enum Color {
 }
 
 impl Color {
-    /// Choose a random color.
-    pub fn choose<R: Rng>(rand: &mut R) -> Self {
+    /// Choose a random color excluding black.
+    pub fn choose(rand: &mut impl Rng) -> Self {
         let value = rand.random_range(1..8);
+        Color::from(value)
+    }
+
+    /// Choose a random color excluding black or white.
+    pub fn choose_non_mono(rand: &mut impl Rng) -> Self {
+        let value = rand.random_range(1..7);
         Color::from(value)
     }
 

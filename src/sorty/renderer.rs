@@ -106,7 +106,7 @@ pub fn render(
 }
 
 impl RenderStyle {
-    pub fn choose<R: Rng>(rand: &mut R) -> Self {
+    pub fn choose(rand: &mut impl Rng) -> Self {
         let value = rand.random_range(0..4);
         RenderStyle::from(value)
     }

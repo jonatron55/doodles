@@ -6,8 +6,12 @@ use std::io::{Result as IoResult, stdout};
 use crossterm::{queue, style::PrintStyledContent};
 use doodles::common::{color::Color, vec::UVec2};
 
-const TRINKET_CHARS: [char; 10] = ['♦', '♣', '♥', '♠', '☼', '✶', 'Ω', '∞', '♪', '♬'];
-const COLLECT_CHARS: [char; 10] = ['○', '¤', '¤', '×', '+', '×', '+', '∙', '◦', ' '];
+const TRINKET_CHARS: [char; 16] = [
+    '♦', '♣', '♥', '♠', '☼', '✶', 'Ω', '∞', '♪', '♬', '$', '¢', '£', '¥', '☙', '❧',
+];
+const COLLECT_CHARS: [char; 16] = [
+    '●', '○', '◌', '¤', '*', '¤', '%', '*', '×', '+', '×', '+', '∙', '◦', '·', ' ',
+];
 const TRINKET_COLORS: [Color; 6] = [
     Color::Red,
     Color::Green,
@@ -89,7 +93,7 @@ impl Trinket {
                 }
                 TrinketState::Collected { frame } => {
                     let idx = (*frame as usize).min(COLLECT_CHARS.len() - 1);
-                    PrintStyledContent(self.color.bold_style().apply(COLLECT_CHARS[idx]))
+                    PrintStyledContent(self.color.medium_style().apply(COLLECT_CHARS[idx]))
                 }
             }
         )

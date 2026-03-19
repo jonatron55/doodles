@@ -1,12 +1,9 @@
 [package]
 name = "doodles"
-authors = ["Jonathon Cobb <jocobb@microsoft.com>"]
+description = "Miscellaneous Rusty Doodles"
+authors = ["Jonathon Burnham Cobb"]
 version = "0.1.0"
 edition = "2024"
-
-[[bin]]
-name = "sorty"
-path = "src/sorty/main.rs"
 
 [[bin]]
 name = "doodle"
@@ -24,6 +21,14 @@ path = "src/digirain/main.rs"
 name = "maze"
 path = "src/maze/main.rs"
 
+[[bin]]
+name = "ripples"
+path = "src/ripples/main.rs"
+
+[[bin]]
+name = "sorty"
+path = "src/sorty/main.rs"
+
 [profile.release]
 opt-level = 3
 lto = true
@@ -35,3 +40,6 @@ clap = { version = "4.5.51", features = ["derive"] }
 crossterm = "0.29.0"
 ctrlc = "3.5.1"
 rand = "0.9.2"
+
+[build-dependencies]
+winresource = "0.1.31"

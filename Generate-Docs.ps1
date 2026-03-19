@@ -58,7 +58,7 @@ function Format-Paragraph {
 }
 
 # List of binaries to document
-$binaries = @("doodle", "sorty", "conway", "digirain", "maze")
+$binaries = @("doodle", "sorty", "conway", "digirain", "ripples", "maze")
 
 # Ensure docs directory exists
 $docsDir = Join-Path $PSScriptRoot "docs"

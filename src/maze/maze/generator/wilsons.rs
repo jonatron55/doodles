@@ -30,7 +30,7 @@ pub struct WilsonsMazeBuilder<'a> {
 }
 
 impl<'a> WilsonsMazeBuilder<'a> {
-    pub fn new<R: Rng>(maze: &'a mut Maze, rand: &mut R) -> Self {
+    pub fn new(maze: &'a mut Maze, rand: &mut impl Rng) -> Self {
         // Add all cells to the open set and shuffle it.
         let mut open: Vec<_> = (0..maze.size().x)
             .flat_map(|x| (0..maze.size().y).map(move |y| uvec2(x, y)))
@@ -55,7 +55,7 @@ impl<'a> WilsonsMazeBuilder<'a> {
         }
     }
 
-    pub fn build_next<R: Rng>(&mut self, rand: &mut R, bias: &BiasMode) -> bool {
+    pub fn build_next(&mut self, rand: &mut impl Rng, bias: &BiasMode) -> bool {
         let head = *self.path.last().unwrap();
         let from = if self.path.len() >= 2 {
             Some(self.path[self.path.len() - 2])

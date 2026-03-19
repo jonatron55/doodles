@@ -73,6 +73,14 @@ impl UVec2 {
         d.x.max(d.y)
     }
 
+    pub fn sum(&self) -> usize {
+        self.x + self.y
+    }
+
+    pub fn prod(&self) -> usize {
+        self.x * self.y
+    }
+
     pub fn saturating_add(&self, other: Self) -> Self {
         UVec2 {
             x: self.x.saturating_add(other.x),

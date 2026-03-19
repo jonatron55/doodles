@@ -60,11 +60,11 @@ pub struct Args {
     min_trail: u32,
 
     /// Probability of spawning a new stream in each cell per frame.
-    #[arg(short = 'p', long, default_value_t = 0.005)]
+    #[arg(short = 'p', long, default_value_t = 0.5)]
     spawnprob: f64,
 
     /// Probability of mutating an existing character in each cell per frame.
-    #[arg(short = 'm', long, default_value_t = 0.15)]
+    #[arg(short = 'm', long, default_value_t = 15.0)]
     mutateprob: f64,
 
     /// Color of the rain.
@@ -78,6 +78,10 @@ pub struct Args {
     /// Layout the characters using fullwidth glyphs.
     #[arg(short = 'F', long)]
     fullwidth: bool,
+
+    /// Total number of frames to render.
+    #[arg(short = 't', long)]
+    frames: Option<usize>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -100,68 +104,79 @@ fn main() -> IoResult<()> {
         _ => {}
     }
 
-    let mut frame = 0;
+    let mut iteration = 0;
+    'outer: while args.common.iter.map_or(true, |max_iter| iteration < max_iter) {
+        iteration += 1;
+        let mut frame = 0;
 
-    let mut size: UVec2 = terminal::size()?.into();
-    if args.fullwidth {
-        size.x /= 2;
-    }
+        let mut size: UVec2 = terminal::size()?.into();
+        if args.fullwidth {
+            size.x /= 2;
+        }
 
-    let mut rand = rand::rng();
-    let alphabet = match &args.alphabet {
-        Some(path) => match fs::read_to_string(&path) {
-            Ok(content) => Some(Cow::Owned(content)),
-            Err(err) => match path.to_string_lossy().to_ascii_uppercase().as_str() {
-                "ASCII" => Some(Cow::Borrowed(include_str!("alphabets/ascii.txt"))),
-                "CP850" => Some(Cow::Borrowed(include_str!("alphabets/cp850.txt"))),
-                "DROPLETS" => Some(Cow::Borrowed(include_str!("alphabets/droplets.txt"))),
-                "HIRA-KATA" => Some(Cow::Borrowed(include_str!("alphabets/hira-kata.txt"))),
-                "KATASCII" => Some(Cow::Borrowed(include_str!("alphabets/katascii.txt"))),
-                _ => {
-                    error!("Failed to read alphabet file {}: {}", path.display(), err);
-                    return Err(err);
-                }
+        let mut rand = rand::rng();
+        let alphabet = match &args.alphabet {
+            Some(path) => match fs::read_to_string(&path) {
+                Ok(content) => Some(Cow::Owned(content)),
+                Err(err) => match path.to_string_lossy().to_ascii_uppercase().as_str() {
+                    "ASCII" => Some(Cow::Borrowed(include_str!("alphabets/ascii.txt"))),
+                    "CP850" => Some(Cow::Borrowed(include_str!("alphabets/cp850.txt"))),
+                    "DROPLETS" => Some(Cow::Borrowed(include_str!("alphabets/droplets.txt"))),
+                    "HIRA-KATA" => Some(Cow::Borrowed(include_str!("alphabets/hira-kata.txt"))),
+                    "KATASCII" => Some(Cow::Borrowed(include_str!("alphabets/katascii.txt"))),
+                    _ => {
+                        error!("Failed to read alphabet file {}: {}", path.display(), err);
+                        return Err(err);
+                    }
+                },
             },
-        },
-        None => None,
-    };
-
-    let mut board = Board::new(size, alphabet.as_deref());
-    let color = args.color.unwrap_or_else(|| ColorArg::choose(&mut rand));
-
-    loop {
-        let dead = args.common.iter.map_or(false, |max_iter| frame >= max_iter);
-
-        frame += 1;
-
-        board = if let Some(next_board) = board.next(&args, frame, &color, &mut rand, dead) {
-            next_board
-        } else {
-            break;
+            None => None,
         };
 
-        board.render(&args)?;
+        let mut board = Board::new(size, alphabet.as_deref());
+        let color = args.color.unwrap_or_else(|| ColorArg::choose(&mut rand));
+        let mut total_frames = args.frames;
 
-        match args.common.wait()? {
-            WaitResult::Resize(mut size) => {
-                if args.fullwidth {
-                    size.x /= 2;
+        'inner: loop {
+            let dead = total_frames.map_or(false, |total_frames| frame >= total_frames);
+
+            frame += 1;
+
+            board = if let Some(next_board) = board.next(&args, frame, &color, &mut rand, dead) {
+                next_board
+            } else {
+                break 'inner;
+            };
+
+            board.render(&args)?;
+
+            match args.common.wait()? {
+                WaitResult::Resize(mut size) => {
+                    if args.fullwidth {
+                        size.x /= 2;
+                    }
+                    execute!(stdout, MoveTo(0, 0), Clear(ClearType::All))?;
+                    board = board.resize(size);
                 }
-                execute!(stdout, MoveTo(0, 0), Clear(ClearType::All))?;
-                board = board.resize(size);
+                WaitResult::Next => {
+                    total_frames = if let Some(max_iter) = total_frames {
+                        Some(max_iter.min(frame))
+                    } else {
+                        Some(frame)
+                    }
+                }
+                WaitResult::Continue => continue 'inner,
+                WaitResult::Exit => break 'outer,
             }
-            WaitResult::Continue => continue,
-            WaitResult::Exit => break,
         }
     }
-
     cleanup_term()?;
 
     Ok(())
 }
 
 impl ColorArg {
-    pub fn choose<R: Rng>(rand: &mut R) -> Self {
+    pub fn choose(rand: &mut impl Rng) -> Self {
         match rand.random_range(1..10) {
             8 => ColorArg::Cycle,
             9 => ColorArg::Random,

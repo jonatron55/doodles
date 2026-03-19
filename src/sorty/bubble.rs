@@ -6,11 +6,17 @@ use std::cmp::Ordering;
 /// Persisted state for bubble sort algorithm.
 #[derive(Clone, Copy, Debug)]
 pub struct BubbleState {
-    /// `true` for left-to-right pass, `false` for right-to-left pass.
-    direction: bool,
+    /// Current direction of the pass.
+    direction: Direction,
 
     /// Current index within the pass.
     index: usize,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum Direction {
+    LeftToRight,
+    RightToLeft,
 }
 
 /// Perform a single step of the bubble sort algorithm.
@@ -28,10 +34,9 @@ pub struct BubbleState {
 ///
 /// `true` if the sorting is complete, `false` if more steps are needed.
 pub fn step_bubble(values: &mut [usize], width: usize, ordering: Ordering, state: &mut BubbleState) -> bool {
-    let i = if state.direction {
-        state.index
-    } else {
-        width - 2 - state.index
+    let i = match state.direction {
+        Direction::LeftToRight => state.index,
+        Direction::RightToLeft => width - 2 - state.index,
     };
 
     let a = values[i];
@@ -47,7 +52,7 @@ pub fn step_bubble(values: &mut [usize], width: usize, ordering: Ordering, state
     if state.index >= width - 1 {
         // Reach the end of the pass; reset for next pass
         state.index = 0;
-        state.direction = !state.direction;
+        state.direction = state.direction.opposite();
 
         if values.windows(2).all(|w| w[0].cmp(&w[1]) != ordering) {
             // Sorting complete
@@ -61,8 +66,17 @@ pub fn step_bubble(values: &mut [usize], width: usize, ordering: Ordering, state
 impl BubbleState {
     pub fn new() -> Self {
         Self {
-            direction: true,
+            direction: Direction::LeftToRight,
             index: 0,
+        }
+    }
+}
+
+impl Direction {
+    fn opposite(self) -> Self {
+        match self {
+            Direction::LeftToRight => Direction::RightToLeft,
+            Direction::RightToLeft => Direction::LeftToRight,
         }
     }
 }

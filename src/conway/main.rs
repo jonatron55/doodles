@@ -98,8 +98,10 @@ fn main() -> IoResult<()> {
         'sim: loop {
             render(&board, &random_state)?;
 
-            if args.common.wait()? == WaitResult::Exit {
-                break 'outer;
+            match args.common.wait()? {
+                WaitResult::Next => continue 'outer,
+                WaitResult::Exit => break 'outer,
+                _ => {}
             }
 
             board.next();
