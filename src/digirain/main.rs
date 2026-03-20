@@ -39,8 +39,14 @@ pub struct Args {
 
     /// Alphabet file to use.
     ///
-    /// This should be a plain text file containing the possible characters to use in the effect. The predefined options
-    /// "ascii", "cp850", and "droplets" are also available.
+    /// This should be a plain text file containing the possible characters to use in the effect. The following
+    /// predefined options are also available:
+    ///
+    /// - "ascii": The 95 printable ASCII characters only.
+    /// - "cp850": Printable characters from Codepage 850 or "DOS: United States".
+    /// - "droplets": A custom set of droplet-like characters.
+    /// - "hira-kata": The fullwidth Hiragana and Katakana alphabets. Use with '--fullwidth' for correct spacing.
+    /// - "katascii": Halfwidth Katakana and ASCII alphanumeric characters.
     ///
     /// If absent, a default alphabet of miscellaneous Latin, Greek, Cyrillic, punctuation, currency, control picture,
     /// and dingbat characters will be used.
@@ -75,11 +81,18 @@ pub struct Args {
     #[arg(short = 'W', long, default_value_t = 192)]
     warmup: usize,
 
-    /// Layout the characters using fullwidth glyphs.
+    /// Lay out the characters using fullwidth glyphs.
+    ///
+    /// Use this in combinations with alphabets containing fullwidth characters (e.g. "hira-kata") for correct spacing.
+    /// Do not mix fullwidth and halfwidth characters.
     #[arg(short = 'F', long)]
     fullwidth: bool,
 
     /// Total number of frames to render.
+    ///
+    /// Once this limit is reached, no new characters will spawn and the existing characters will be allowed to die out.
+    /// The animation will restart with a new random seed until '--iter' total animations have been completed (if
+    /// specified).
     #[arg(short = 't', long)]
     frames: Option<usize>,
 }

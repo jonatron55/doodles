@@ -6,6 +6,7 @@ use std::{
     io::{BufRead, BufReader, Error as IoError, ErrorKind as IoErrorKind, Read, Result as IoResult},
 };
 
+use doodles::common::{row_major::IterRowMajor, vec::UVec2};
 use rand::{
     Rng,
     distr::{
@@ -31,8 +32,7 @@ const HISTORY_LEN: usize = 64;
 /// how to display them.
 #[derive(Clone, Debug)]
 pub struct Board {
-    width: usize,
-    height: usize,
+    size: UVec2,
     cell_buffers: [Vec<Cell>; 2],
     generation: usize,
     history: [u64; HISTORY_LEN],
@@ -64,11 +64,10 @@ pub struct Cell {
 
 impl Board {
     /// Creates a new empty board with the given dimensions.
-    pub fn new(width: usize, height: usize) -> Self {
+    pub fn new(size: UVec2) -> Self {
         Board {
-            width,
-            height,
-            cell_buffers: [vec![Cell::empty(); width * height], vec![Cell::empty(); width * height]],
+            size,
+            cell_buffers: [vec![Cell::empty(); size.prod()], vec![Cell::empty(); size.prod()]],
             generation: 0,
             history: [0; HISTORY_LEN],
         }
@@ -111,26 +110,26 @@ impl Board {
         let mut reader = BufReader::new(reader);
         let mut line = String::new();
 
-        for y in 0..self.height {
+        for y in 0..self.size.y {
             line.clear();
             if reader.read_line(&mut line)? == 0 {
-                for x in 0..self.width {
-                    self.cell_buffers[0][y + (x * self.width)] = Cell::empty();
+                for x in 0..self.size.x {
+                    self.cell_buffers[0][y + (x * self.size.x)] = Cell::empty();
                 }
                 continue;
             }
 
             let mut chars = line.chars();
-            for x in 0..self.width {
+            for x in 0..self.size.x {
                 let ch = chars.next();
 
                 match ch {
                     Some(ch) if ch.is_whitespace() => {
-                        self.cell_buffers[0][y + (x * self.width)] = Cell::empty();
+                        self.cell_buffers[0][y + (x * self.size.x)] = Cell::empty();
                     }
                     Some(ch) if ch.is_alphanumeric() => {
                         let color = ch.to_digit(36).unwrap();
-                        self.cell_buffers[0][y + (x * self.width)] = Cell::new(color);
+                        self.cell_buffers[0][y + (x * self.size.x)] = Cell::new(color);
                     }
                     Some(other) => {
                         return Err(IoError::new(
@@ -138,7 +137,7 @@ impl Board {
                             format!("Invalid character '{other}'"),
                         ));
                     }
-                    None => self.cell_buffers[0][y + (x * self.width)] = Cell::empty(),
+                    None => self.cell_buffers[0][y + (x * self.size.x)] = Cell::empty(),
                 }
             }
         }
@@ -150,15 +149,15 @@ impl Board {
     }
 
     /// Returns the dimensions of the board as (width, height).
-    pub fn size(&self) -> (usize, usize) {
-        (self.width, self.height)
+    pub fn size(&self) -> UVec2 {
+        self.size
     }
 
     /// Returns a reference to the cell at the given coordinates.
-    pub fn cell(&self, x: usize, y: usize) -> &Cell {
-        let x = x % self.width;
-        let y = y % self.height;
-        let i = y * self.width + x;
+    pub fn cell(&self, pos: UVec2) -> &Cell {
+        let x = pos.x % self.size.x;
+        let y = pos.y % self.size.y;
+        let i = y * self.size.x + x;
         &self.current_buffer()[i]
     }
 
@@ -173,27 +172,25 @@ impl Board {
         let mut neighbors = Vec::with_capacity(8);
         let mut board_hasher = DefaultHasher::new();
 
-        for y in 0..self.height {
-            for x in 0..self.width {
-                board_hasher.write_u8(if self.cell(x, y).is_alive() { 1 } else { 0 });
-                neighbors.clear();
+        for pos in self.size.clone().iter_row_major() {
+            board_hasher.write_u8(if self.cell(pos).is_alive() { 1 } else { 0 });
+            neighbors.clear();
 
-                for dy in -1..=1 {
-                    for dx in -1..=1 {
-                        if dx == 0 && dy == 0 {
-                            continue;
-                        }
-
-                        neighbors.push(*self.cell(
-                            ((x as isize + dx + self.width as isize) % self.width as isize) as usize,
-                            ((y as isize + dy + self.height as isize) % self.height as isize) as usize,
-                        ));
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    if dx == 0 && dy == 0 {
+                        continue;
                     }
-                }
 
-                let i = y * self.width + x;
-                self.next_buffer()[i] = self.current_buffer()[i].next(&neighbors);
+                    neighbors.push(*self.cell(UVec2 {
+                        x: ((pos.x as isize + dx + self.size.x as isize) % self.size.x as isize) as usize,
+                        y: ((pos.y as isize + dy + self.size.y as isize) % self.size.y as isize) as usize,
+                    }));
+                }
             }
+
+            let i = pos.y * self.size.x + pos.x;
+            self.next_buffer()[i] = self.current_buffer()[i].next(&neighbors);
         }
 
         self.history[self.generation % HISTORY_LEN] = board_hasher.finish();

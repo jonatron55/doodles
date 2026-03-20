@@ -16,13 +16,14 @@ use crate::ripples::{Medium, RenderStyle};
 
 mod ripples;
 
+/// Ripples terminal animation.
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about=None)]
 pub struct Args {
     #[clap(flatten)]
     common: CommonArgs,
 
-    /// Period of the waves in frames.
+    /// Period of a wave in frames. If not specified, this will be randomly chosen for each animation.
     #[clap(short = 'P', long)]
     period: Option<usize>,
 
@@ -30,7 +31,7 @@ pub struct Args {
     #[clap(short = 'p', long, default_value_t = 10.0)]
     spawnprob: f64,
 
-    /// Initial amplitude of new waves
+    /// Initial amplitude of new waves.
     #[clap(short = 'a', long, default_value_t = 50.0)]
     amplitude: f64,
 
@@ -38,11 +39,11 @@ pub struct Args {
     #[clap(short = 'c', long)]
     color: Option<Color>,
 
-    /// Medium peak color.
+    /// Color of wave peaks.
     #[clap(short = 'k', long)]
     peak_color: Option<Color>,
 
-    /// Medium trough color.
+    /// Color of wave troughs.
     #[clap(short = 'u', long)]
     trough_color: Option<Color>,
 
@@ -51,6 +52,10 @@ pub struct Args {
     style: Option<RenderStyle>,
 
     /// Total number of frames to render.
+    ///
+    /// Once this limit is reached, no new waves will spawn and the existing waves will be allowed to die out. The
+    /// animation will restart with a new random seed until '--iter' total animations have been completed (if
+    /// specified).
     #[arg(short = 't', long)]
     frames: Option<usize>,
 }

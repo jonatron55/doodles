@@ -25,6 +25,11 @@ pub const fn uvec2(x: usize, y: usize) -> UVec2 {
 impl UVec2 {
     pub const ZERO: UVec2 = UVec2 { x: 0, y: 0 };
     pub const ONE: UVec2 = UVec2 { x: 1, y: 1 };
+    pub const MIN: UVec2 = UVec2 { x: 0, y: 0 };
+    pub const MAX: UVec2 = UVec2 {
+        x: usize::MAX,
+        y: usize::MAX,
+    };
 
     /// Creates a new `UVec2` with the given components.
     pub const fn new(x: usize, y: usize) -> Self {

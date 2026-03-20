@@ -6,23 +6,39 @@ use std::{
     str::FromStr,
 };
 
-use clap::{ValueEnum, builder::PossibleValue};
+use clap::ValueEnum;
 use crossterm::style::{Attribute, Attributes, Color as TermColor, ContentStyle};
 use rand::Rng;
 
 /// A primary terminal color.
 ///
 /// Can be parsed as a command line argument and is convertible to a [`crossterm::style::Color`].
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, ValueEnum)]
 #[repr(u8)]
+#[clap(rename_all = "kebab-case")]
 pub enum Color {
+    #[clap(alias = "k", alias = "0")]
     Black = 0,
+
+    #[clap(alias = "r", alias = "1")]
     Red = 1,
+
+    #[clap(alias = "g", alias = "2")]
     Green = 2,
+
+    #[clap(alias = "y", alias = "3")]
     Yellow = 3,
+
+    #[clap(alias = "b", alias = "4")]
     Blue = 4,
+
+    #[clap(alias = "m", alias = "5")]
     Magenta = 5,
+
+    #[clap(alias = "c", alias = "6")]
     Cyan = 6,
+
+    #[clap(alias = "w", alias = "7")]
     White = 7,
 }
 
@@ -163,35 +179,6 @@ impl From<u8> for Color {
             6 => Color::Cyan,
             7 => Color::White,
             _ => unreachable!(),
-        }
-    }
-}
-
-// Allows parsing and listing of colors as command line argument values.
-impl ValueEnum for Color {
-    fn value_variants<'a>() -> &'a [Self] {
-        &[
-            Color::Black,
-            Color::Red,
-            Color::Green,
-            Color::Yellow,
-            Color::Blue,
-            Color::Magenta,
-            Color::Cyan,
-            Color::White,
-        ]
-    }
-
-    fn to_possible_value(&self) -> Option<PossibleValue> {
-        match self {
-            Color::Black => Some(PossibleValue::new("black").alias("k").alias("0")),
-            Color::Red => Some(PossibleValue::new("red").alias("r").alias("1")),
-            Color::Green => Some(PossibleValue::new("green").alias("g").alias("2")),
-            Color::Yellow => Some(PossibleValue::new("yellow").alias("y").alias("3")),
-            Color::Blue => Some(PossibleValue::new("blue").alias("b").alias("4")),
-            Color::Magenta => Some(PossibleValue::new("magenta").alias("m").alias("5")),
-            Color::Cyan => Some(PossibleValue::new("cyan").alias("c").alias("6")),
-            Color::White => Some(PossibleValue::new("white").alias("w").alias("7")),
         }
     }
 }

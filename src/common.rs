@@ -6,5 +6,7 @@ pub mod color;
 pub mod dir;
 pub mod image;
 pub mod math;
+pub mod rect;
+pub mod row_major;
 pub mod term;
 pub mod vec;

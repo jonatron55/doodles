@@ -6,10 +6,9 @@ use std::{
     hash::RandomState,
     io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, stdout},
     path::PathBuf,
-    str::FromStr,
 };
 
-use clap::{Parser, ValueEnum, builder::PossibleValue};
+use clap::{Parser, ValueEnum};
 use crossterm::{
     execute,
     terminal::{self, Clear, ClearType},
@@ -74,35 +73,45 @@ pub struct Args {
 }
 
 /// Maze render style argument.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, ValueEnum)]
 #[repr(u8)]
+#[clap(rename_all = "kebab-case")]
 enum MazeRenderArg {
     /// Plain walls with single-line borders.
+    #[clap(alias = "p", alias = "0")]
     Plain = 0,
 
     /// Bold outer walls with curved inner walls.
+    #[clap(alias = "c", alias = "1")]
     Curved = 1,
 
     /// Double-line walls.
+    #[clap(alias = "d", alias = "2")]
     Double = 2,
 
     /// Block-style walls.
+    #[clap(alias = "b", alias = "3")]
     Block = 3,
 
     /// Block-style outer walls with hedge-style inner walls.
+    #[clap(alias = "bh", alias = "4")]
     BlockHedge = 4,
 
     /// Hedge-style walls.
+    #[clap(alias = "h", alias = "5")]
     Hedge = 5,
 
     /// Block-style outer walls with fence-style inner walls.
+    #[clap(alias = "bf", alias = "6")]
     BlockFence = 6,
 
     /// Fence-style walls.
+    #[clap(alias = "f", alias = "7")]
     Fence = 7,
 }
 
-#[derive(ValueEnum, Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, ValueEnum)]
+#[clap(rename_all = "kebab-case")]
 enum MazeAlgorithm {
     /// Randomized depth-first search.
     Dfs,
@@ -248,12 +257,7 @@ fn main() -> IoResult<()> {
             }
         };
 
-        let algorithm = args.algorithm.unwrap_or_else(|| match rand.random_range(0..3) {
-            0 => MazeAlgorithm::Dfs,
-            1 => MazeAlgorithm::Wilsons,
-            2 => MazeAlgorithm::Prims,
-            _ => unreachable!(),
-        });
+        let algorithm = args.algorithm.unwrap_or_else(|| MazeAlgorithm::choose(&mut rand));
 
         let mut builder = match algorithm {
             MazeAlgorithm::Dfs => MazeBuilder::Dfs(DfsMazeBuilder::new(&mut maze, &mut rand)),
@@ -338,33 +342,21 @@ fn main() -> IoResult<()> {
     Ok(())
 }
 
+impl MazeAlgorithm {
+    pub fn choose(rand: &mut impl Rng) -> Self {
+        match rand.random_range(0..3) {
+            0 => MazeAlgorithm::Dfs,
+            1 => MazeAlgorithm::Wilsons,
+            2 => MazeAlgorithm::Prims,
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl MazeRenderArg {
     pub fn choose(rand: &mut impl Rng) -> Self {
         let value = rand.random_range(0..8);
         MazeRenderArg::from(value)
-    }
-}
-
-impl FromStr for MazeRenderArg {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(value) = s.parse::<u8>() {
-            Ok(MazeRenderArg::from(value))
-        } else {
-            let s = s.to_uppercase();
-            match s.as_str() {
-                "P" | "PLAIN" => Ok(MazeRenderArg::Plain),
-                "C" | "CURVED" => Ok(MazeRenderArg::Curved),
-                "D" | "DOUBLE" => Ok(MazeRenderArg::Double),
-                "B" | "BLOCK" => Ok(MazeRenderArg::Block),
-                "G" | "BLOCKHEDGE" => Ok(MazeRenderArg::BlockHedge),
-                "H" | "HEDGE" => Ok(MazeRenderArg::Hedge),
-                "E" | "BLOCKFENCE" => Ok(MazeRenderArg::BlockFence),
-                "F" | "FENCE" => Ok(MazeRenderArg::Fence),
-                _ => Err(()),
-            }
-        }
     }
 }
 
@@ -376,7 +368,7 @@ impl Into<u8> for MazeRenderArg {
 
 impl From<u8> for MazeRenderArg {
     fn from(value: u8) -> Self {
-        match value % 8 {
+        match value & 7 {
             0 => MazeRenderArg::Plain,
             1 => MazeRenderArg::Curved,
             2 => MazeRenderArg::Double,
@@ -386,34 +378,6 @@ impl From<u8> for MazeRenderArg {
             6 => MazeRenderArg::BlockFence,
             7 => MazeRenderArg::Fence,
             _ => unreachable!(),
-        }
-    }
-}
-
-impl ValueEnum for MazeRenderArg {
-    fn value_variants<'a>() -> &'a [Self] {
-        &[
-            MazeRenderArg::Plain,
-            MazeRenderArg::Curved,
-            MazeRenderArg::Double,
-            MazeRenderArg::Block,
-            MazeRenderArg::BlockHedge,
-            MazeRenderArg::Hedge,
-            MazeRenderArg::BlockFence,
-            MazeRenderArg::Fence,
-        ]
-    }
-
-    fn to_possible_value(&self) -> Option<PossibleValue> {
-        match self {
-            MazeRenderArg::Plain => Some(PossibleValue::new("plain").alias("p").alias("0")),
-            MazeRenderArg::Curved => Some(PossibleValue::new("curved").alias("c").alias("1")),
-            MazeRenderArg::Double => Some(PossibleValue::new("double").alias("d").alias("2")),
-            MazeRenderArg::Block => Some(PossibleValue::new("block").alias("b").alias("3")),
-            MazeRenderArg::BlockHedge => Some(PossibleValue::new("blockhedge").alias("g").alias("4")),
-            MazeRenderArg::Hedge => Some(PossibleValue::new("hedge").alias("h").alias("5")),
-            MazeRenderArg::BlockFence => Some(PossibleValue::new("blockfence").alias("e").alias("6")),
-            MazeRenderArg::Fence => Some(PossibleValue::new("fence").alias("f").alias("7")),
         }
     }
 }

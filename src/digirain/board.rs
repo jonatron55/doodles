@@ -8,7 +8,12 @@ use crossterm::{
     queue,
     style::{Print, PrintStyledContent},
 };
-use doodles::common::{color::Color, math::Lerp, vec::UVec2};
+use doodles::common::{
+    color::Color,
+    math::Lerp,
+    row_major::IterRowMajor,
+    vec::{UVec2, uvec2},
+};
 use rand::{
     Rng,
     distr::{Bernoulli, Distribution},
@@ -85,12 +90,10 @@ impl Board {
             ),
         };
 
-        for y in 0..new_size.y.min(self.size.y) {
-            for x in 0..new_size.x.min(self.size.x) {
-                let src = self.cell_index(x, y);
-                let dst = new_board.cell_index(x, y);
-                new_board.buffers.0[dst] = self.buffers.0[src].clone();
-            }
+        for pos in self.size.iter_row_major() {
+            let src = self.cell_index(pos);
+            let dst = new_board.cell_index(pos);
+            new_board.buffers.0[dst] = self.buffers.0[src].clone();
         }
 
         new_board
@@ -123,47 +126,45 @@ impl Board {
         // never continue).
         let trail = Bernoulli::new(((args.max_trail - args.min_trail) as f64).recip()).unwrap();
 
-        for y in 0..self.size.y {
-            for x in 0..self.size.x {
-                let index = self.cell_index(x, y);
+        for pos in self.size.iter_row_major() {
+            let index = self.cell_index(pos);
 
-                if self.buffers.0[index].is_alive(args) {
-                    // If we have a living cell, age it and possibly spawn a new cell below.
-                    let mut cell = self.buffers.0[index].clone();
+            if self.buffers.0[index].is_alive(args) {
+                // If we have a living cell, age it and possibly spawn a new cell below.
+                let mut cell = self.buffers.0[index].clone();
 
-                    // Randomly change the character content of the cell.
-                    if mutate.sample(rand) {
-                        cell.content = *self.alphabet.choose(rand).unwrap();
-                    }
-
-                    if cell.age == 0 {
-                        // This is a head cell; possibly spawn depending on the existing trail length.
-                        let continue_trail = match cell.trail_length {
-                            len if len < args.min_trail => true, // Below minimum trail length; always continue.
-                            len if len >= args.max_trail => false, // Above maximum trail length; never continue.
-                            _ => trail.sample(rand),             // Between min and max; continue at random.
-                        };
-
-                        if continue_trail {
-                            let lower = self.cell_index(x, y + 1);
-                            self.buffers.1[lower] =
-                                Cell::new_head(*self.alphabet.choose(rand).unwrap(), cell.trail_length + 1, cell.color);
-                        }
-                    }
-
-                    cell.age += 1;
-                    self.buffers.1[index] = cell;
-                } else if !dead && !self.buffers.1[index].is_alive(args) && spawn.sample(rand) {
-                    // We have an empty cell and randomly decided to spawn a new head here.
-                    let color = match color {
-                        ColorArg::Color(color) => *color,
-                        ColorArg::Cycle => Color::from(
-                            ((frame.wrapping_mul(2) / ((args.lifespan as usize).saturating_mul(3))) % 7 + 1) as u8,
-                        ),
-                        ColorArg::Random => Color::choose(rand),
-                    };
-                    self.buffers.1[index] = Cell::new_head(*self.alphabet.choose(rand).unwrap(), 1, color);
+                // Randomly change the character content of the cell.
+                if mutate.sample(rand) {
+                    cell.content = *self.alphabet.choose(rand).unwrap();
                 }
+
+                if cell.age == 0 {
+                    // This is a head cell; possibly spawn depending on the existing trail length.
+                    let continue_trail = match cell.trail_length {
+                        len if len < args.min_trail => true, // Below minimum trail length; always continue.
+                        len if len >= args.max_trail => false, // Above maximum trail length; never continue.
+                        _ => trail.sample(rand),             // Between min and max; continue at random.
+                    };
+
+                    if continue_trail {
+                        let lower = self.cell_index(pos + uvec2(0, 1));
+                        self.buffers.1[lower] =
+                            Cell::new_head(*self.alphabet.choose(rand).unwrap(), cell.trail_length + 1, cell.color);
+                    }
+                }
+
+                cell.age += 1;
+                self.buffers.1[index] = cell;
+            } else if !dead && !self.buffers.1[index].is_alive(args) && spawn.sample(rand) {
+                // We have an empty cell and randomly decided to spawn a new head here.
+                let color = match color {
+                    ColorArg::Color(color) => *color,
+                    ColorArg::Cycle => Color::from(
+                        ((frame.wrapping_mul(2) / ((args.lifespan as usize).saturating_mul(3))) % 7 + 1) as u8,
+                    ),
+                    ColorArg::Random => Color::choose(rand),
+                };
+                self.buffers.1[index] = Cell::new_head(*self.alphabet.choose(rand).unwrap(), 1, color);
             }
         }
 
@@ -187,7 +188,9 @@ impl Board {
             queue!(stdout, MoveTo(0, y as u16))?;
 
             for x in 0..self.size.x {
-                let cell = &self.buffers.0[self.cell_index(x, y)];
+                let pos = uvec2(x, y);
+
+                let cell = &self.buffers.0[self.cell_index(pos)];
                 if cell.is_alive(args) {
                     // Display head cells in bold and trail cells in dim.
                     let style = if cell.age == 0 {
@@ -209,8 +212,8 @@ impl Board {
     }
 
     /// Returns the linear index of the cell at the given coordinates, wrapping at boundaries.
-    fn cell_index(&self, x: usize, y: usize) -> usize {
-        y % self.size.y * self.size.x + x % self.size.x
+    fn cell_index(&self, pos: UVec2) -> usize {
+        pos.y % self.size.y * self.size.x + pos.x % self.size.x
     }
 }
 

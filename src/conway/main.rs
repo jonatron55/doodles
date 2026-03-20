@@ -6,6 +6,7 @@ use std::{fs::OpenOptions, hash::RandomState, io::Result as IoResult, path::Path
 use clap::Parser;
 use crossterm::terminal;
 use doodles::common::term::{CommonArgs, WaitResult, cleanup_term, setup_term};
+use doodles::common::vec::uvec2;
 use doodles::error;
 
 use crate::board::Board;
@@ -66,7 +67,7 @@ fn main() -> IoResult<()> {
         }
 
         let (width, height) = terminal::size()?;
-        let mut board = Board::new(width as usize, height as usize);
+        let mut board = Board::new(uvec2(width as usize, height as usize));
 
         board = if let Some(path) = &args.path {
             // Load the board from the specified file.

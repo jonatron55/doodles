@@ -21,6 +21,7 @@ use doodles::common::{
     color::Color,
     dir::Directions,
     image::Image,
+    row_major::IterRowMajor,
     vec::{UVec2, uvec2},
 };
 use rand::Rng;
@@ -336,37 +337,34 @@ impl Maze {
         let bmp_size = self.bitmap_size();
         let mut bitmap = BitVec::repeat(false, bmp_size.x * bmp_size.y);
 
-        for y in 0..self.size.y {
-            for x in 0..self.size.x {
-                let cell = self.cells[self.cell_index(uvec2(x, y))];
-                let visited = cell.contains(Cell::VISITED);
+        for pos in self.size.iter_row_major() {
+            let cell = self.cells[self.cell_index(pos)];
+            let visited = cell.contains(Cell::VISITED);
 
-                let bx = x * 2 + 1;
-                let by = y * 2 + 1;
+            let bmppos = pos * 2 + UVec2::ONE;
 
-                if visited {
-                    // Set diagonal corners
-                    bitmap.set((by - 1) * bmp_size.x + (bx - 1), true);
-                    bitmap.set((by - 1) * bmp_size.x + (bx + 1), true);
-                    bitmap.set((by + 1) * bmp_size.x + (bx + 1), true);
-                    bitmap.set((by + 1) * bmp_size.x + (bx - 1), true);
+            if visited {
+                // Set diagonal corners
+                bitmap.set((bmppos.y - 1) * bmp_size.x + (bmppos.x - 1), true);
+                bitmap.set((bmppos.y - 1) * bmp_size.x + (bmppos.x + 1), true);
+                bitmap.set((bmppos.y + 1) * bmp_size.x + (bmppos.x + 1), true);
+                bitmap.set((bmppos.y + 1) * bmp_size.x + (bmppos.x - 1), true);
 
-                    // Set walls as needed
-                    if cell.contains(Cell::WALL_EAST) {
-                        bitmap.set(by * bmp_size.x + (bx + 1), true);
-                    }
+                // Set walls as needed
+                if cell.contains(Cell::WALL_EAST) {
+                    bitmap.set(bmppos.y * bmp_size.x + (bmppos.x + 1), true);
+                }
 
-                    if cell.contains(Cell::WALL_SOUTH) {
-                        bitmap.set((by + 1) * bmp_size.x + bx, true);
-                    }
+                if cell.contains(Cell::WALL_SOUTH) {
+                    bitmap.set((bmppos.y + 1) * bmp_size.x + bmppos.x, true);
+                }
 
-                    if x == 0 || self.cells[self.cell_index(uvec2(x - 1, y))].contains(Cell::WALL_EAST) {
-                        bitmap.set(by * bmp_size.x + (bx - 1), true);
-                    }
+                if pos.x == 0 || self.cells[self.cell_index(pos - uvec2(1, 0))].contains(Cell::WALL_EAST) {
+                    bitmap.set(bmppos.y * bmp_size.x + (bmppos.x - 1), true);
+                }
 
-                    if y == 0 || self.cells[self.cell_index(uvec2(x, y - 1))].contains(Cell::WALL_SOUTH) {
-                        bitmap.set((by - 1) * bmp_size.x + bx, true);
-                    }
+                if pos.y == 0 || self.cells[self.cell_index(pos - uvec2(0, 1))].contains(Cell::WALL_SOUTH) {
+                    bitmap.set((bmppos.y - 1) * bmp_size.x + bmppos.x, true);
                 }
             }
         }

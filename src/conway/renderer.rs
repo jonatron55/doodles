@@ -12,7 +12,7 @@ use crossterm::{
     queue,
     style::{ContentStyle, PrintStyledContent},
 };
-use doodles::common::color::Color;
+use doodles::common::{color::Color, vec::uvec2};
 
 /// Glyphs used to represent cells.
 ///
@@ -54,14 +54,14 @@ const CELL_GLYPHS: [[char; 12]; 8] = [
 ///
 /// `Ok(())` if the rendering was successful, or a [`std::io::Error`] if any problems occurred during terminal output.
 pub fn render(board: &Board, random_state: &RandomState) -> IoResult<()> {
-    let (width, height) = board.size();
+    let size = board.size();
     let mut stdout = stdout();
 
-    for y in 0..height {
+    for y in 0..size.y {
         queue!(stdout, MoveTo(0, y as u16),)?;
 
-        for x in 0..width {
-            let cell = board.cell(x, y);
+        for x in 0..size.x {
+            let cell = board.cell(uvec2(x, y));
 
             if cell.is_empty() {
                 queue!(stdout, PrintStyledContent(ContentStyle::default().apply(" ")))?;

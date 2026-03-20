@@ -7,7 +7,7 @@ use std::{
     str::FromStr,
 };
 
-use clap::{ValueEnum, builder::PossibleValue};
+use clap::ValueEnum;
 use crossterm::{queue, style::PrintStyledContent};
 use doodles::common::{
     color::Color,
@@ -49,19 +49,24 @@ pub struct Agent<'a> {
 }
 
 /// Method for rendering the agent.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 #[repr(u8)]
+#[clap(rename_all = "kebab-case")]
 pub enum RenderStyle {
     /// Agent rendered as a smiley face (`☻`).
+    #[clap(alias = "s", alias = "0")]
     Smiley = 0,
 
     /// Agent rendered as alternating dots (`•`) and lines (`┃` or `━`).
+    #[clap(alias = "i", alias = "1")]
     Inchworm = 1,
 
     /// Agent rendered as directional arrows (`▲`, `▶`, `▼`, `◀`).
+    #[clap(alias = "t", alias = "2")]
     Turtle = 2,
 
     /// Agent rendered as alternating slashes (`/` and `\`).
+    #[clap(alias = "w", alias = "3")]
     Walker = 3,
 }
 
@@ -275,32 +280,12 @@ impl Into<u8> for RenderStyle {
 
 impl From<u8> for RenderStyle {
     fn from(value: u8) -> Self {
-        match value % 4 {
+        match value & 3 {
             0 => RenderStyle::Smiley,
             1 => RenderStyle::Inchworm,
             2 => RenderStyle::Turtle,
             3 => RenderStyle::Walker,
             _ => unreachable!(),
-        }
-    }
-}
-
-impl ValueEnum for RenderStyle {
-    fn value_variants<'a>() -> &'a [Self] {
-        &[
-            RenderStyle::Smiley,
-            RenderStyle::Inchworm,
-            RenderStyle::Turtle,
-            RenderStyle::Walker,
-        ]
-    }
-
-    fn to_possible_value(&self) -> Option<PossibleValue> {
-        match self {
-            RenderStyle::Smiley => Some(PossibleValue::new("smiley").alias("s").alias("0")),
-            RenderStyle::Inchworm => Some(PossibleValue::new("inchworm").alias("i").alias("1")),
-            RenderStyle::Turtle => Some(PossibleValue::new("turtle").alias("t").alias("2")),
-            RenderStyle::Walker => Some(PossibleValue::new("walker").alias("w").alias("3")),
         }
     }
 }

@@ -5,16 +5,15 @@ use std::{
     f64::consts::PI,
     hash::{BuildHasher, Hash, Hasher, RandomState},
     io::{Result as IoResult, Write, stdout},
-    str::FromStr,
 };
 
-use clap::{ValueEnum, builder::PossibleValue};
+use clap::ValueEnum;
 use crossterm::{
     cursor::MoveTo,
     queue,
     style::{Attributes, ContentStyle, PrintStyledContent},
 };
-use doodles::common::{color::Color, math::Lerp, vec::UVec2};
+use doodles::common::{color::Color, math::Lerp, row_major::IterRowMajor, vec::UVec2};
 use rand::{
     Rng,
     distr::{Bernoulli, Distribution},
@@ -48,11 +47,17 @@ pub struct Wave {
     age: usize,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, ValueEnum)]
 #[repr(u8)]
+#[clap(rename_all = "kebab-case")]
 pub enum RenderStyle {
+    #[clap(alias = "b", alias = "0")]
     Block = 0,
+
+    #[clap(alias = "s", alias = "1")]
     Splash = 1,
+
+    #[clap(alias = "d", alias = "2")]
     Dots = 2,
 }
 
@@ -154,23 +159,20 @@ impl Medium {
 
         self.sources = sources;
 
-        for y in 0..self.size.y {
-            for x in 0..self.size.x {
-                let mut value = 0.0;
-                let pos = UVec2 { x, y };
+        for pos in self.size.iter_row_major() {
+            let mut value = 0.0;
 
-                for wave in &self.waves {
-                    let distance = pos.euclidean_dist(wave.focus);
-                    let radius = wave.radius(self.period);
+            for wave in &self.waves {
+                let distance = pos.euclidean_dist(wave.focus);
+                let radius = wave.radius(self.period);
 
-                    let phase = PI * f64::inverse_lerp(radius - self.period as f64, radius, distance).max(0.0);
-                    if phase > 0.0 && phase < 2.0 * PI {
-                        value -= wave.amplitude * phase.sin();
-                    }
+                let phase = PI * f64::inverse_lerp(radius - self.period as f64, radius, distance).max(0.0);
+                if phase > 0.0 && phase < 2.0 * PI {
+                    value -= wave.amplitude * phase.sin();
                 }
-
-                self.buffer[(y * self.size.x + x) as usize] = value as f32;
             }
+
+            self.buffer[(pos.y * self.size.x + pos.x) as usize] = value as f32;
         }
 
         self.waves
@@ -299,24 +301,6 @@ impl RenderStyle {
     }
 }
 
-impl FromStr for RenderStyle {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(value) = s.parse::<u8>() {
-            Ok(RenderStyle::from(value))
-        } else {
-            let s = s.to_uppercase();
-            match s.as_str() {
-                "S" | "SPLASH" => Ok(RenderStyle::Splash),
-                "B" | "BLOCK" => Ok(RenderStyle::Block),
-                "D" | "DOTS" => Ok(RenderStyle::Dots),
-                _ => Err(()),
-            }
-        }
-    }
-}
-
 impl Into<u8> for RenderStyle {
     fn into(self) -> u8 {
         self as u8
@@ -330,20 +314,6 @@ impl From<u8> for RenderStyle {
             1 => RenderStyle::Block,
             2 => RenderStyle::Dots,
             _ => unreachable!(),
-        }
-    }
-}
-
-impl ValueEnum for RenderStyle {
-    fn value_variants<'a>() -> &'a [Self] {
-        &[RenderStyle::Splash, RenderStyle::Block, RenderStyle::Dots]
-    }
-
-    fn to_possible_value(&self) -> Option<PossibleValue> {
-        match self {
-            RenderStyle::Splash => Some(PossibleValue::new("splash").alias("s").alias("0")),
-            RenderStyle::Block => Some(PossibleValue::new("block").alias("b").alias("1")),
-            RenderStyle::Dots => Some(PossibleValue::new("dots").alias("d").alias("2")),
         }
     }
 }

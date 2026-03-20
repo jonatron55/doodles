@@ -4,21 +4,28 @@
 use std::{
     cmp::Ordering,
     io::{Result as IoResult, Write, stdout},
-    str::FromStr,
 };
 
 use bitvec::bitvec;
-use clap::{ValueEnum, builder::PossibleValue};
+use clap::ValueEnum;
 use crossterm::{cursor::MoveTo, queue, style::PrintStyledContent};
 use doodles::common::{color::Color, vec::UVec2};
 use rand::Rng;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, ValueEnum)]
 #[repr(u8)]
+#[clap(rename_all = "kebab-case")]
 pub enum RenderStyle {
+    #[clap(alias = "b", alias = "0")]
     Block = 0,
+
+    #[clap(alias = "d", alias = "1")]
     Dots = 1,
+
+    #[clap(alias = "f", alias = "2")]
     Fraction = 2,
+
+    #[clap(alias = "o", alias = "3")]
     Octal = 3,
 }
 
@@ -112,25 +119,6 @@ impl RenderStyle {
     }
 }
 
-impl FromStr for RenderStyle {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(value) = s.parse::<u8>() {
-            Ok(RenderStyle::from(value))
-        } else {
-            let s = s.to_uppercase();
-            match s.as_str() {
-                "B" | "BLACK" => Ok(RenderStyle::Block),
-                "D" | "DOTS" => Ok(RenderStyle::Dots),
-                "F" | "FRACTION" => Ok(RenderStyle::Fraction),
-                "O" | "OCTAL" => Ok(RenderStyle::Octal),
-                _ => Err(()),
-            }
-        }
-    }
-}
-
 impl Into<u8> for RenderStyle {
     fn into(self) -> u8 {
         self as u8
@@ -145,26 +133,6 @@ impl From<u8> for RenderStyle {
             2 => RenderStyle::Fraction,
             3 => RenderStyle::Octal,
             _ => unreachable!(),
-        }
-    }
-}
-
-impl ValueEnum for RenderStyle {
-    fn value_variants<'a>() -> &'a [Self] {
-        &[
-            RenderStyle::Block,
-            RenderStyle::Dots,
-            RenderStyle::Fraction,
-            RenderStyle::Octal,
-        ]
-    }
-
-    fn to_possible_value(&self) -> Option<PossibleValue> {
-        match self {
-            RenderStyle::Block => Some(PossibleValue::new("block").alias("b").alias("0")),
-            RenderStyle::Dots => Some(PossibleValue::new("dots").alias("d").alias("1")),
-            RenderStyle::Fraction => Some(PossibleValue::new("fraction").alias("f").alias("2")),
-            RenderStyle::Octal => Some(PossibleValue::new("octal").alias("o").alias("3")),
         }
     }
 }
