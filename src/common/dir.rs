@@ -11,6 +11,7 @@ use crate::common::{
 
 /// A single cardinal direction.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
 pub enum Direction {
     North = 0b0001,
     East = 0b0010,
@@ -49,21 +50,21 @@ impl Direction {
     /// bias of `1.0` means vertical directions will always come first, while a bias of `0.0` means horizontal
     /// directions will always come first. A bias of `0.5` results in a uniform random shuffle.
     pub fn biased_shuffle(rand: &mut impl Rng, bias: f64) -> [Self; 4] {
-        let horz = if rand.random_bool(0.5) {
+        let (h0, h1) = if rand.random_bool(0.5) {
             (Direction::East, Direction::West)
         } else {
             (Direction::West, Direction::East)
         };
-        let vert = if rand.random_bool(0.5) {
+        let (v0, v1) = if rand.random_bool(0.5) {
             (Direction::North, Direction::South)
         } else {
             (Direction::South, Direction::North)
         };
 
         if rand.random_bool(bias) {
-            [vert.0, vert.1, horz.0, horz.1]
+            [v0, v1, h0, h1]
         } else {
-            [horz.0, horz.1, vert.0, vert.1]
+            [h0, h1, v0, v1]
         }
     }
 

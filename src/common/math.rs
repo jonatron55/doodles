@@ -7,16 +7,16 @@ pub trait Lerp<T: Copy + PartialOrd> {
     ///
     /// This function does not clamp the interpolant `t` between `0` and `1`. For an interpolant outside that range, the
     /// result will extrapolate beyond the endpoints.
-    fn lerp(a: T, b: T, t: T) -> T;
+    fn lerp(a: Self, b: Self, t: T) -> T;
 
     /// Linearly interpolates between `a` and `b` by `t`, without exceeding either endpoint.
     ///
     /// This function clamps the interpolant `t` between `0` and `1`, ensuring the result always lies within the range
     /// defined by `a` and `b`.
-    fn saturating_lerp(a: T, b: T, t: T) -> T;
+    fn saturating_lerp(a: Self, b: Self, t: T) -> T;
 
     /// Computes the interpolant `t` such that `lerp(a, b, t) == value`.
-    fn inverse_lerp(a: T, b: T, value: T) -> T;
+    fn inverse_lerp(a: Self, b: Self, value: Self) -> T;
 }
 
 impl Lerp<f32> for f32 {

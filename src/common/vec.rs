@@ -23,22 +23,19 @@ pub const fn uvec2(x: usize, y: usize) -> UVec2 {
 }
 
 impl UVec2 {
-    pub const ZERO: UVec2 = UVec2 { x: 0, y: 0 };
-    pub const ONE: UVec2 = UVec2 { x: 1, y: 1 };
-    pub const MIN: UVec2 = UVec2 { x: 0, y: 0 };
-    pub const MAX: UVec2 = UVec2 {
-        x: usize::MAX,
-        y: usize::MAX,
-    };
+    pub const ZERO: Self = Self::smear(0);
+    pub const ONE: Self = Self::smear(1);
+    pub const MIN: Self = Self::smear(0);
+    pub const MAX: Self = Self::smear(usize::MAX);
 
-    /// Creates a new `UVec2` with the given components.
+    /// Creates a new `Self` with the given components.
     pub const fn new(x: usize, y: usize) -> Self {
-        UVec2 { x, y }
+        Self { x, y }
     }
 
-    /// Creates a new `UVec2` with both components set to `n`.
+    /// Creates a new `Self` with both components set to `n`.
     pub const fn smear(n: usize) -> Self {
-        UVec2 { x: n, y: n }
+        Self { x: n, y: n }
     }
 
     /// Returns the component-wise absolute difference between two vectors.
@@ -46,7 +43,7 @@ impl UVec2 {
     /// Since the components are unsigned, this is equivalent to subtracting the smaller component from the larger
     /// component for each axis.
     pub fn abs_diff(&self, other: Self) -> Self {
-        UVec2 {
+        Self {
             x: self.x.abs_diff(other.x),
             y: self.y.abs_diff(other.y),
         }
@@ -87,87 +84,51 @@ impl UVec2 {
     }
 
     pub fn saturating_add(&self, other: Self) -> Self {
-        UVec2 {
-            x: self.x.saturating_add(other.x),
-            y: self.y.saturating_add(other.y),
-        }
+        uvec2(self.x.saturating_add(other.x), self.y.saturating_add(other.y))
     }
 
     pub fn saturating_sub(&self, other: Self) -> Self {
-        UVec2 {
-            x: self.x.saturating_sub(other.x),
-            y: self.y.saturating_sub(other.y),
-        }
+        uvec2(self.x.saturating_sub(other.x), self.y.saturating_sub(other.y))
     }
 
     pub fn saturating_mul(&self, rhs: usize) -> Self {
-        UVec2 {
-            x: self.x.saturating_mul(rhs),
-            y: self.y.saturating_mul(rhs),
-        }
+        uvec2(self.x.saturating_mul(rhs), self.y.saturating_mul(rhs))
     }
 
     pub fn saturating_div(&self, rhs: usize) -> Self {
-        UVec2 {
-            x: self.x.saturating_div(rhs),
-            y: self.y.saturating_div(rhs),
-        }
+        uvec2(self.x.saturating_div(rhs), self.y.saturating_div(rhs))
     }
 
     pub fn wrapping_add(&self, other: Self) -> Self {
-        UVec2 {
-            x: self.x.wrapping_add(other.x),
-            y: self.y.wrapping_add(other.y),
-        }
+        uvec2(self.x.wrapping_add(other.x), self.y.wrapping_add(other.y))
     }
 
     pub fn wrapping_sub(&self, other: Self) -> Self {
-        UVec2 {
-            x: self.x.wrapping_sub(other.x),
-            y: self.y.wrapping_sub(other.y),
-        }
+        uvec2(self.x.wrapping_sub(other.x), self.y.wrapping_sub(other.y))
     }
 
     pub fn wrapping_mul(&self, rhs: usize) -> Self {
-        UVec2 {
-            x: self.x.wrapping_mul(rhs),
-            y: self.y.wrapping_mul(rhs),
-        }
+        uvec2(self.x.wrapping_mul(rhs), self.y.wrapping_mul(rhs))
     }
 
     pub fn wrapping_div(&self, rhs: usize) -> Self {
-        UVec2 {
-            x: self.x.wrapping_div(rhs),
-            y: self.y.wrapping_div(rhs),
-        }
+        uvec2(self.x.wrapping_div(rhs), self.y.wrapping_div(rhs))
     }
 
     pub fn checked_add(&self, other: Self) -> Option<Self> {
-        Some(UVec2 {
-            x: self.x.checked_add(other.x)?,
-            y: self.y.checked_add(other.y)?,
-        })
+        Some(uvec2(self.x.checked_add(other.x)?, self.y.checked_add(other.y)?))
     }
 
     pub fn checked_sub(&self, other: Self) -> Option<Self> {
-        Some(UVec2 {
-            x: self.x.checked_sub(other.x)?,
-            y: self.y.checked_sub(other.y)?,
-        })
+        Some(uvec2(self.x.checked_sub(other.x)?, self.y.checked_sub(other.y)?))
     }
 
     pub fn checked_mul(&self, rhs: usize) -> Option<Self> {
-        Some(UVec2 {
-            x: self.x.checked_mul(rhs)?,
-            y: self.y.checked_mul(rhs)?,
-        })
+        Some(uvec2(self.x.checked_mul(rhs)?, self.y.checked_mul(rhs)?))
     }
 
     pub fn checked_div(&self, rhs: usize) -> Option<Self> {
-        Some(UVec2 {
-            x: self.x.checked_div(rhs)?,
-            y: self.y.checked_div(rhs)?,
-        })
+        Some(uvec2(self.x.checked_div(rhs)?, self.y.checked_div(rhs)?))
     }
 }
 
@@ -185,34 +146,25 @@ impl Into<(usize, usize)> for UVec2 {
 
 impl From<(u8, u8)> for UVec2 {
     fn from(value: (u8, u8)) -> Self {
-        UVec2 {
-            x: value.0 as usize,
-            y: value.1 as usize,
-        }
+        uvec2(value.0 as usize, value.1 as usize)
     }
 }
 
 impl From<(u16, u16)> for UVec2 {
     fn from(value: (u16, u16)) -> Self {
-        UVec2 {
-            x: value.0 as usize,
-            y: value.1 as usize,
-        }
+        uvec2(value.0 as usize, value.1 as usize)
     }
 }
 
 impl From<(u32, u32)> for UVec2 {
     fn from(value: (u32, u32)) -> Self {
-        UVec2 {
-            x: value.0 as usize,
-            y: value.1 as usize,
-        }
+        uvec2(value.0 as usize, value.1 as usize)
     }
 }
 
 impl From<(usize, usize)> for UVec2 {
     fn from(value: (usize, usize)) -> Self {
-        UVec2 { x: value.0, y: value.1 }
+        uvec2(value.0, value.1)
     }
 }
 
@@ -222,10 +174,7 @@ impl Add for UVec2 {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        UVec2 {
-            x: self.x + other.x,
-            y: self.y + other.y,
-        }
+        uvec2(self.x + other.x, self.y + other.y)
     }
 }
 
@@ -240,10 +189,7 @@ impl Sub for UVec2 {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
-        UVec2 {
-            x: self.x - other.x,
-            y: self.y - other.y,
-        }
+        uvec2(self.x - other.x, self.y - other.y)
     }
 }
 
@@ -258,10 +204,7 @@ impl Mul<usize> for UVec2 {
     type Output = Self;
 
     fn mul(self, rhs: usize) -> Self::Output {
-        UVec2 {
-            x: self.x * rhs,
-            y: self.y * rhs,
-        }
+        uvec2(self.x * rhs, self.y * rhs)
     }
 }
 
@@ -269,10 +212,7 @@ impl Mul<UVec2> for usize {
     type Output = UVec2;
 
     fn mul(self, rhs: UVec2) -> Self::Output {
-        UVec2 {
-            x: self * rhs.x,
-            y: self * rhs.y,
-        }
+        uvec2(self * rhs.x, self * rhs.y)
     }
 }
 
@@ -287,10 +227,7 @@ impl Div<usize> for UVec2 {
     type Output = Self;
 
     fn div(self, rhs: usize) -> Self::Output {
-        UVec2 {
-            x: self.x / rhs,
-            y: self.y / rhs,
-        }
+        uvec2(self.x / rhs, self.y / rhs)
     }
 }
 
@@ -305,10 +242,7 @@ impl Rem<usize> for UVec2 {
     type Output = Self;
 
     fn rem(self, rhs: usize) -> Self::Output {
-        UVec2 {
-            x: self.x % rhs,
-            y: self.y % rhs,
-        }
+        uvec2(self.x % rhs, self.y % rhs)
     }
 }
 
@@ -324,10 +258,7 @@ impl RemAssign<usize> for UVec2 {
 impl BitAnd for UVec2 {
     type Output = Self;
     fn bitand(self, rhs: Self) -> Self {
-        Self {
-            x: self.x & rhs.x,
-            y: self.y & rhs.y,
-        }
+        uvec2(self.x & rhs.x, self.y & rhs.y)
     }
 }
 
@@ -340,10 +271,7 @@ impl BitAndAssign for UVec2 {
 impl BitOr for UVec2 {
     type Output = Self;
     fn bitor(self, rhs: Self) -> Self {
-        Self {
-            x: self.x | rhs.x,
-            y: self.y | rhs.y,
-        }
+        uvec2(self.x | rhs.x, self.y | rhs.y)
     }
 }
 
@@ -356,10 +284,7 @@ impl BitOrAssign for UVec2 {
 impl BitXor for UVec2 {
     type Output = Self;
     fn bitxor(self, rhs: Self) -> Self {
-        Self {
-            x: self.x ^ rhs.x,
-            y: self.y ^ rhs.y,
-        }
+        uvec2(self.x ^ rhs.x, self.y ^ rhs.y)
     }
 }
 
@@ -372,17 +297,14 @@ impl BitXorAssign for UVec2 {
 impl Not for UVec2 {
     type Output = Self;
     fn not(self) -> Self {
-        Self { x: !self.x, y: !self.y }
+        uvec2(!self.x, !self.y)
     }
 }
 
 impl Shl<usize> for UVec2 {
     type Output = Self;
     fn shl(self, rhs: usize) -> Self {
-        Self {
-            x: self.x << rhs,
-            y: self.y << rhs,
-        }
+        uvec2(self.x << rhs, self.y << rhs)
     }
 }
 
@@ -395,10 +317,7 @@ impl ShlAssign<usize> for UVec2 {
 impl Shr<usize> for UVec2 {
     type Output = Self;
     fn shr(self, rhs: usize) -> Self {
-        Self {
-            x: self.x >> rhs,
-            y: self.y >> rhs,
-        }
+        uvec2(self.x >> rhs, self.y >> rhs)
     }
 }
 
@@ -461,7 +380,7 @@ impl FromStr for UVec2 {
             }
         }) {
             if let (Ok(x), Ok(y)) = (x_str.parse::<usize>(), y_str.parse::<usize>()) {
-                return Ok(UVec2 { x, y });
+                return Ok(uvec2(x, y));
             }
         }
         Err(())

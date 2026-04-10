@@ -280,7 +280,7 @@ impl Cell {
         let like_neighbors = neighbors.iter().filter(|c| c.color == self.color && c.is_alive()).count();
 
         if self.is_alive() {
-            if like_neighbors < 2 || like_neighbors > 3 {
+            if like_neighbors < 2 || living_neighbors > 3 {
                 // Cell dies and begins aging
                 Cell {
                     color: self.color,

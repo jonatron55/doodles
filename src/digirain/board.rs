@@ -107,7 +107,7 @@ impl Board {
         frame: usize,
         color: &ColorArg,
         rand: &mut impl Rng,
-        dead: bool,
+        dying: bool,
     ) -> Option<Self> {
         self.buffers.1.fill(Cell::default());
 
@@ -155,7 +155,7 @@ impl Board {
 
                 cell.age += 1;
                 self.buffers.1[index] = cell;
-            } else if !dead && !self.buffers.1[index].is_alive(args) && spawn.sample(rand) {
+            } else if !dying && !self.buffers.1[index].is_alive(args) && spawn.sample(rand) {
                 // We have an empty cell and randomly decided to spawn a new head here.
                 let color = match color {
                     ColorArg::Color(color) => *color,

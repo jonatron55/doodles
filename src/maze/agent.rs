@@ -135,6 +135,7 @@ impl<'a> Agent<'a> {
                         // We've completely explored this junction; backtrack to the previous one.
                         if let Some(from) = junction.from {
                             self.state = State::Moving(from);
+                            self.dir = from;
                             self.path.pop();
                         } else {
                             // No unexplored paths and no way back. This means the maze is insoluble and we should not
