@@ -14,7 +14,7 @@ use doodles::common::{
     dir::{Direction, Directions},
     vec::{UVec2, uvec2},
 };
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 use crate::{maze::Maze, trinket::Trinket};
 

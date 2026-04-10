@@ -8,7 +8,7 @@ use std::{
 
 use doodles::common::{row_major::IterRowMajor, vec::UVec2};
 use rand::{
-    Rng,
+    Rng, RngExt,
     distr::{
         Bernoulli, Distribution,
         uniform::{UniformSampler, UniformUsize},

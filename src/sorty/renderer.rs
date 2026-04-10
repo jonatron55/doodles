@@ -10,7 +10,7 @@ use bitvec::bitvec;
 use clap::ValueEnum;
 use crossterm::{cursor::MoveTo, queue, style::PrintStyledContent};
 use doodles::common::{color::Color, vec::UVec2};
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 #[repr(u8)]

@@ -15,7 +15,7 @@ use crossterm::{
 };
 use doodles::common::{color::Color, math::Lerp, row_major::IterRowMajor, vec::UVec2};
 use rand::{
-    Rng,
+    Rng, RngExt,
     distr::{Bernoulli, Distribution},
 };
 

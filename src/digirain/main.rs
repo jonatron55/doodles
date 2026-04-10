@@ -28,7 +28,7 @@ use doodles::{
 mod board;
 
 use board::Board;
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 /// Digital rain terminal animation.
 #[derive(Parser, Debug)]

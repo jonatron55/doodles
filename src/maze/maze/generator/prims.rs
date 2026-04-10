@@ -7,7 +7,7 @@ use doodles::common::{
     dir::Direction,
     vec::{UVec2, uvec2},
 };
-use rand::{Rng, seq::IteratorRandom};
+use rand::{Rng, RngExt, seq::IteratorRandom};
 
 use crate::{
     agent::RenderStyle as AgentRenderStyle,
@@ -32,10 +32,7 @@ pub struct PrimsMazeBuilder<'a> {
 
 impl<'a> PrimsMazeBuilder<'a> {
     pub fn new<R: Rng>(maze: &'a mut Maze, rand: &mut R) -> Self {
-        let initial = uvec2(
-            rand.random_range(0..maze.size.x),
-            rand.random_range(0..maze.size.y),
-        );
+        let initial = uvec2(rand.random_range(0..maze.size.x), rand.random_range(0..maze.size.y));
 
         let initial_idx = maze.cell_index(initial);
         maze.cells[initial_idx].insert(Cell::VISITED);
@@ -87,7 +84,6 @@ impl<'a> PrimsMazeBuilder<'a> {
     }
 
     pub fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
-        self.maze
-            .render(style, &[], &[], &AgentRenderStyle::default(), random_state)
+        self.maze.render(style, &[], &[], &AgentRenderStyle::default(), random_state)
     }
 }

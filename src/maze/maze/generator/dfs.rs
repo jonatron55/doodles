@@ -7,7 +7,7 @@ use doodles::common::{
     dir::Direction,
     vec::{UVec2, uvec2},
 };
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 use crate::{
     agent::RenderStyle as AgentRenderStyle,

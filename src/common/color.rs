@@ -8,7 +8,7 @@ use std::{
 
 use clap::ValueEnum;
 use crossterm::style::{Attribute, Attributes, Color as TermColor, ContentStyle};
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 /// A primary terminal color.
 ///

@@ -10,7 +10,7 @@ use doodles::common::{
     term::{CommonArgs, WaitResult, cleanup_term, setup_term},
     vec::uvec2,
 };
-use rand::Rng;
+use rand::RngExt;
 
 use crate::ripples::{Medium, RenderStyle};
 

@@ -2,7 +2,7 @@
 // Licensed under the MIT-0 license.
 
 use bitflags::bitflags;
-use rand::{Rng, seq::IteratorRandom};
+use rand::{Rng, RngExt, seq::IteratorRandom};
 
 use crate::common::{
     borders::*,
