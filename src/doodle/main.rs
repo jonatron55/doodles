@@ -36,7 +36,7 @@ const DOODLES: [Doodle; 5] = [
 
 /// Plays random doodles.
 #[derive(Parser, Debug)]
-#[clap(author, version, about, long_about=None)]
+#[clap(author, version, about, long_about)]
 struct Args {
     /// Number of iterations to run.
     ///

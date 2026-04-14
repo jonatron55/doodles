@@ -33,7 +33,52 @@ function Format-Description {
     # Also convert 'word(...)' patterns (function-like syntax)
     $text = $text -replace "'([a-zA-Z_][a-zA-Z0-9_]*\([^']*\))'", '`$1`'
 
-    return Format-Paragraph $text
+    $lines = $text -split '\r?\n'
+    $formattedBlocks = @()
+    $normalBuffer = @()
+
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match '^\s*Possible values:\s*$') {
+            $rows = @()
+            $j = $i + 1
+
+            while ($j -lt $lines.Count -and $lines[$j] -match '^\s*-\s+([^:]+?)\s*:\s+(.+)$') {
+                $value = $Matches[1].Trim()
+                $desc = $Matches[2].Trim() -replace '\|', '\\|'
+                $rows += [PSCustomObject]@{ Value = $value; Description = $desc }
+                $j++
+            }
+
+            # Only render as a table when detailed rows are present.
+            if ($rows.Count -gt 0) {
+                if ($normalBuffer.Count -gt 0) {
+                    $formattedBlocks += (Format-Paragraph ($normalBuffer -join "`n"))
+                    $normalBuffer = @()
+                    $formattedBlocks += ""
+                }
+
+                $valueWidth = ($rows | Measure-Object -Property { $_.Value.Length } -Maximum).Maximum + 2
+                $descWidth = ($rows | Measure-Object -Property { $_.Description.Length } -Maximum).Maximum
+
+                $formattedBlocks += ""
+                $formattedBlocks += "| " + "Value".PadRight($valueWidth) + " | " + "Description".PadRight($descWidth) + " |"
+                $formattedBlocks += "| " + ("-" * ($valueWidth)) + " | " + ("-" * ($descWidth)) + " |"
+                foreach ($row in $rows) {
+                    $formattedBlocks += "| " + "``$($row.Value)``".PadRight($valueWidth) + " | " + $row.Description.PadRight($descWidth) + " |"
+                }
+                $formattedBlocks += ""
+                $i = $j - 1
+                continue
+            }
+        }
+
+        $normalBuffer += $lines[$i]
+    }
+
+    if ($normalBuffer.Count -gt 0) {
+        $formattedBlocks += (Format-Paragraph ($normalBuffer -join "`n"))
+    }
+    return ($formattedBlocks -join "`n")
 }
 
 function Format-Paragraph {
@@ -57,6 +102,27 @@ function Format-Paragraph {
     return $result -join "`n"
 }
 
+function Format-ArgumentHeading {
+    param([string]$argument)
+
+    $optional = $false
+    $heading = $argument.Trim()
+
+    # Bracketed positional args are optional in clap help output, e.g. [PATH].
+    if ($heading -match '^\[(.+)\]$') {
+        $optional = $true
+        $heading = $Matches[1]
+    }
+    elseif ($heading -match '^<(.+)>$') {
+        $heading = $Matches[1]
+    }
+
+    return @{
+        Heading = "``$heading``"
+        Optional = $optional
+    }
+}
+
 # List of binaries to document
 $binaries = @("doodle", "sorty", "conway", "digirain", "ripples", "maze")
 
@@ -71,7 +137,10 @@ foreach ($bin in $binaries) {
     Write-Host "Generating documentation for '$bin'..."
 
     # Run cargo to get help text
+    $prevEncoding = [Console]::OutputEncoding
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     $helpOutput = & cargo run --release --bin $bin -- --help 2>&1
+    [Console]::OutputEncoding = $prevEncoding
 
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "Failed to get help for '$bin': $helpOutput"
@@ -88,7 +157,10 @@ foreach ($bin in $binaries) {
     # Parse and format the help text into proper markdown
     $lines = $helpText -split "`n"
     $mdLines = @()
+    $inArguments = $false
     $inOptions = $false
+    $currentArgument = $null
+    $argumentDescription = @()
     $currentOption = $null
     $optionDescription = @()
 
@@ -105,15 +177,71 @@ foreach ($bin in $binaries) {
             continue
         }
 
+        # Check for Arguments: header
+        if ($line -match '^Arguments:\s*$') {
+            $inArguments = $true
+            $inOptions = $false
+            $mdLines += ""
+            $mdLines += "### Arguments ###"
+            continue
+        }
+
         # Check for Options: header
         if ($line -match '^Options:\s*$') {
+            # Flush last argument if in Arguments section
+            if ($currentArgument) {
+                $mdLines += ""
+                $argMeta = Format-ArgumentHeading $currentArgument
+                $mdLines += "#### $($argMeta.Heading) ####"
+                $mdLines += ""
+                if ($argMeta.Optional) {
+                    $mdLines += "*Optional*"
+                    $mdLines += ""
+                }
+                $desc = ($argumentDescription -join "`n").Trim()
+                if ($desc) {
+                    $mdLines += Format-Description $desc
+                }
+            }
+            $inArguments = $false
             $inOptions = $true
+            $currentArgument = $null
+            $argumentDescription = @()
             $mdLines += ""
             $mdLines += "### Options ###"
             continue
         }
 
-        if ($inOptions) {
+        if ($inArguments) {
+            # Check for a new argument line (starts with spaces then a word, no dashes)
+            if ($line -match '^\s{1,4}(\[[^\]]+\]|<[^>]+>|[A-Za-z_][A-Za-z0-9_-]*(?:\s+<[^>]+>)?)') {
+                # Flush previous argument
+                if ($currentArgument) {
+                    $mdLines += ""
+                    $argMeta = Format-ArgumentHeading $currentArgument
+                    $mdLines += "#### $($argMeta.Heading) ####"
+                    $mdLines += ""
+                    if ($argMeta.Optional) {
+                        $mdLines += "*Optional*"
+                        $mdLines += ""
+                    }
+                    $desc = ($argumentDescription -join "`n").Trim()
+                    if ($desc) {
+                        $mdLines += Format-Description $desc
+                    }
+                }
+                $currentArgument = $Matches[1].Trim()
+                $argumentDescription = @()
+            }
+            # Description lines (indented more deeply)
+            elseif ($line -match '^\s{6,}(.*)$') {
+                $argumentDescription += $Matches[1]
+            }
+            elseif ($line -match '^\s*$') {
+                $argumentDescription += ""
+            }
+        }
+        elseif ($inOptions) {
             # Check for a new option line (starts with spaces then -)
             if ($line -match '^\s{1,4}(-[a-zA-Z], --[a-zA-Z][-a-zA-Z0-9]*(?:\s+<[^>]+>)?|--[a-zA-Z][-a-zA-Z0-9]*(?:\s+<[^>]+>)?|-[a-zA-Z](?:\s+<[^>]+>)?)') {
                 # Flush previous option
@@ -132,9 +260,11 @@ foreach ($bin in $binaries) {
                 $optionDescription = @()
             }
             # Description lines (indented more deeply)
-            elseif ($line -match '^\s{6,}(.*)$' -or $line -match '^\s*$') {
-                $text = if ($Matches[1]) { $Matches[1] } else { "" }
-                $optionDescription += $text
+            elseif ($line -match '^\s{6,}(.*)$') {
+                $optionDescription += $Matches[1]
+            }
+            elseif ($line -match '^\s*$') {
+                $optionDescription += ""
             }
         }
         # First line is typically the description
@@ -143,7 +273,23 @@ foreach ($bin in $binaries) {
         }
     }
 
-    # Flush last option
+    # Flush last argument if any
+    if ($currentArgument) {
+        $mdLines += ""
+        $argMeta = Format-ArgumentHeading $currentArgument
+        $mdLines += "#### $($argMeta.Heading) ####"
+        $mdLines += ""
+        if ($argMeta.Optional) {
+            $mdLines += "*Optional*"
+            $mdLines += ""
+        }
+        $desc = ($argumentDescription -join "`n").Trim()
+        if ($desc) {
+            $mdLines += Format-Description $desc
+        }
+    }
+
+    # Flush last option if any
     if ($currentOption) {
         $mdLines += ""
         # Format option: split at comma and wrap each part in backticks

@@ -35,13 +35,20 @@ mod trinket;
 
 /// Generates and solves mazes.
 #[derive(Parser, Debug)]
-#[clap(author, version, about, long_about=None)]
+#[clap(author, version, about, long_about)]
 pub struct Args {
     #[clap(flatten)]
     common: CommonArgs,
 
     /// Maze generation algorithm.
-    #[clap(short = 'a', long = "algo")]
+    ///
+    /// `dfs` and `prims` both converge in linear time, but `dfs` tends to produce mazes with long, winding  passages,
+    /// whereas `prims` produces mazes with many short dead ends. `wilsons` algorithm produces mazes with a uniform
+    /// distribution of passage lengths, but converges more slowly than the other two algorithms, especially for larger
+    /// mazes.
+    ///
+    /// If not specified, a random algorithm will be chosen for each maze.
+    #[clap(short = 'a', long = "algo", alias = "algorithm")]
     algorithm: Option<MazeAlgorithm>,
 
     /// Maze render style.
@@ -116,10 +123,10 @@ enum MazeAlgorithm {
     /// Randomized depth-first search.
     Dfs,
 
-    /// Prim's algorithm.
+    /// Prim’s algorithm (randomized minimum spanning tree).
     Prims,
 
-    /// Wilson's algorithm.
+    /// Wilson’s algorithm (loop-erased random walks).
     Wilsons,
 }
 
@@ -202,7 +209,7 @@ fn main() -> IoResult<()> {
     let mut rand = rand::rng();
 
     'outer: loop {
-        if let Some(max_iterations) = args.common.iter
+        if let Some(max_iterations) = args.common.max_iterations
             && iteration >= max_iterations
         {
             break 'outer;

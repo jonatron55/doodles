@@ -24,7 +24,7 @@ mod renderer;
 
 /// Visualizes different sorting algorithms.
 #[derive(Parser, Debug)]
-#[clap(author, version, about, long_about=None)]
+#[clap(author, version, about, long_about)]
 pub struct Args {
     #[clap(flatten)]
     common: CommonArgs,
@@ -50,7 +50,7 @@ pub struct Args {
     ascending: bool,
 
     /// Sorting algorithm.
-    #[arg(short = 'a', long = "algo", default_value = "qsort")]
+    #[arg(short = 'a', long = "algo", alias = "algorithm", default_value = "qsort")]
     algorithm: Algorithm,
 }
 
@@ -85,7 +85,7 @@ fn main() -> IoResult<()> {
     let mut iteration = 0;
 
     'outer: loop {
-        if let Some(max_iterations) = args.common.iter
+        if let Some(max_iterations) = args.common.max_iterations
             && iteration >= max_iterations
         {
             break 'outer;

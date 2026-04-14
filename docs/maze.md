@@ -3,7 +3,7 @@
 `maze`
 ======
 
-Generates and solves mazes
+Generates and solves mazes.
 
 Usage
 -----
@@ -14,7 +14,7 @@ maze.exe [OPTIONS]
 
 ### Options ###
 
-#### `-n`, `--iter <ITER>` ####
+#### `-n`, `--iter <MAX_ITERATIONS>` ####
 
 Number of iterations to run.
 
@@ -38,18 +38,38 @@ program will render frames as fast as possible. This option is incompatible with
 
 #### `-a`, `--algo <ALGORITHM>` ####
 
-Maze generation algorithm
+Maze generation algorithm.
 
-Possible values:
-- dfs:     Randomized depth-first search
-- prims:   Prim's algorithm
-- wilsons: Wilson's algorithm
+`dfs` and `prims` both converge in linear time, but `dfs` tends to produce mazes with long, winding  passages, whereas
+`prims` produces mazes with many short dead ends. `wilsons` algorithm produces mazes with a uniform distribution of
+passage lengths, but converges more slowly than the other two algorithms, especially for larger mazes.
+
+If not specified, a random algorithm will be chosen for each maze.
+
+
+| Value     | Description                                         |
+| --------- | --------------------------------------------------- |
+| `dfs`     | Randomized depth-first search                       |
+| `prims`   | Prim’s algorithm (randomized minimum spanning tree) |
+| `wilsons` | Wilson’s algorithm (loop-erased random walks)       |
+
 
 #### `-m`, `--maze-style <MAZE_STYLE>` ####
 
 Maze render style
 
-*possible values: plain, curved, double, block, blockhedge, hedge, blockfence, fence*
+
+| Value         | Description                                          |
+| ------------- | ---------------------------------------------------- |
+| `plain`       | Plain walls with single-line borders                 |
+| `curved`      | Bold outer walls with curved inner walls             |
+| `double`      | Double-line walls                                    |
+| `block`       | Block-style walls                                    |
+| `block-hedge` | Block-style outer walls with hedge-style inner walls |
+| `hedge`       | Hedge-style walls                                    |
+| `block-fence` | Block-style outer walls with fence-style inner walls |
+| `fence`       | Fence-style walls                                    |
+
 
 #### `-c`, `--color <COLOR>` ####
 
@@ -61,7 +81,14 @@ Maze wall color
 
 Agent render style
 
-*possible values: smiley, inchworm, turtle, walker*
+
+| Value      | Description                                                     |
+| ---------- | --------------------------------------------------------------- |
+| `smiley`   | Agent rendered as a smiley face (`☻`)                           |
+| `inchworm` | Agent rendered as alternating dots (`•`) and lines (`┃` or `━`) |
+| `turtle`   | Agent rendered as directional arrows (`▲`, `▶`, `▼`, `◀`)       |
+| `walker`   | Agent rendered as alternating slashes (`/` and `\`)             |
+
 
 #### `-N`, `--agents <AGENTS>` ####
 

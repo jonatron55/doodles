@@ -3,7 +3,7 @@
 `doodle`
 ========
 
-Plays random doodles
+Plays random doodles.
 
 Usage
 -----

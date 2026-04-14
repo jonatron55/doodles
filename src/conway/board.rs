@@ -17,9 +17,9 @@ use rand::{
 
 const HISTORY_LEN: usize = 64;
 
-/// Represents the state of a Conway's Game of Life board.
+/// Represents the state of a Conway’s Game of Life board.
 ///
-/// In addition to the usual rules of Conway's Game of Life, this implementation includes coloured cells, which modify
+/// In addition to the usual rules of Conway’s Game of Life, this implementation includes coloured cells, which modify
 /// the rules as follows:
 ///
 /// 1. Any live cell with fewer than two live neighbours **of the same colour** dies, as if by underpopulation.
@@ -87,7 +87,7 @@ impl Board {
         self
     }
 
-    /// Updates the board's cells by reading from the given file reader.
+    /// Updates the board’s cells by reading from the given file reader.
     ///
     /// The reader should provide a plain text representation of the board, with rows of cells where white spaces
     /// represent empty cells and any other alphanumeric character represents a living cell. The color of a living cell
@@ -99,7 +99,7 @@ impl Board {
     /// Arguments
     /// =========
     ///
-    /// - `reader` - A reader providing the board's plain text representation.
+    /// - `reader` - A reader providing the board’s plain text representation.
     ///
     /// Returns
     /// =======
@@ -257,7 +257,7 @@ impl Cell {
 
     /// Computes the next state of the cell based on its neighbors.
     ///
-    /// The cell's next state is determined by these rules:
+    /// The cell’s next state is determined by these rules:
     ///
     /// 1. Any live cell with fewer than two live neighbours of the same color dies, as if by underpopulation.
     /// 2. Any live cell with two or three live neighbours of the same color survives.

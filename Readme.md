@@ -13,8 +13,8 @@ A meta-program that plays random doodles from the collection below in sequence.
 `conway`
 --------
 
-An implementation of [Conway's Game of Life] (cellular automata) with coloured cells. In addition to the usual rules of
-Conway's Game of Life, this implementation adds colour to the cells and modifies the rules slightly:
+An implementation of [Conway’s Game of Life] (cellular automata) with coloured cells. In addition to the usual rules of
+Conway’s Game of Life, this implementation adds colour to the cells and modifies the rules slightly:
 
 1. Any living cell with fewer than two live neighbours **of the same colour** dies, as if by underpopulation.
 2. Any living cell with two or three live neighbours **of the same colour** survives.
@@ -54,13 +54,13 @@ Building and Running
 
 - To install Rust, first install [rustup], and then run `rustup update` to get the latest stable version of Rust. You
   may need to close and reopen your terminal before new commands are available.
-- To build the project, navigate to the project directory and run `cargo build --all-targets` (for debug builds) or
-  `cargo build --all-targets --release`  (for optimized builds).
+- To build the project, navigate to the project directory and run `cargo build` (for debug builds) or
+  `cargo build --release` (for optimized builds).
 - The output will be placed in the `target/debug` or `target/release` directory, respectively.
 - To run a specific target, use `cargo run --release --bin <bin>`, replacing `<bin>` with the name of the desired
   target.
 - For detailed usage information and command-line options for each program, run
   `cargo run --release --bin <bin> -- --help`.
 
-[Conway's Game of Life]: https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
+[Conway’s Game of Life]: https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
 [rustup]: https://rustup.rs/

@@ -3,7 +3,7 @@
 `digirain`
 ==========
 
-Digital rain terminal animation
+Digital rain terminal animation.
 
 Usage
 -----
@@ -14,7 +14,7 @@ digirain.exe [OPTIONS]
 
 ### Options ###
 
-#### `-n`, `--iter <ITER>` ####
+#### `-n`, `--iter <MAX_ITERATIONS>` ####
 
 Number of iterations to run.
 
@@ -36,12 +36,17 @@ program will render frames as fast as possible. This option is incompatible with
 
 *default: 32*
 
-#### `-a`, `--alphabet <ALPHABET>` ####
+#### `-a`, `--alpha <ALPHABET>` ####
 
 Alphabet file to use.
 
-This should be a plain text file containing the possible characters to use in the effect. The predefined options
-"ascii", "cp850", and "droplets" are also available.
+This should be a plain text file containing the possible characters to use in the effect. The following predefined
+options are also available:
+
+- "ascii": The 95 printable ASCII characters only. - "cp850": Printable characters from Codepage 850 or "DOS: United
+States". - "droplets": A custom set of droplet-like characters. - "hira-kata": The fullwidth Hiragana and Katakana
+alphabets. Use with `--fullwidth` for correct spacing. - "katascii": Halfwidth Katakana and ASCII alphanumeric
+characters.
 
 If absent, a default alphabet of miscellaneous Latin, Greek, Cyrillic, punctuation, currency, control picture, and
 dingbat characters will be used.
@@ -64,13 +69,13 @@ Minimum trail length for each stream
 
 *default: 8*
 
-#### `-p`, `--spawnprob <SPAWNPROB>` ####
+#### `-p`, `--spawn-prob <SPAWN_PROB>` ####
 
 Probability of spawning a new stream in each cell per frame
 
 *default: 0.5*
 
-#### `-m`, `--mutateprob <MUTATEPROB>` ####
+#### `-m`, `--mutate-prob <MUTATE_PROB>` ####
 
 Probability of mutating an existing character in each cell per frame
 
@@ -90,11 +95,17 @@ Number of frames to "warm up" the effect before reaching full spawn probability
 
 #### `-F`, `--fullwidth` ####
 
-Layout the characters using fullwidth glyphs
+Lay out the characters using fullwidth glyphs.
+
+Use this in combinations with alphabets containing fullwidth characters (e.g. "hira-kata") for correct spacing. Do not
+mix fullwidth and halfwidth characters.
 
 #### `-t`, `--frames <FRAMES>` ####
 
-Total number of frames to render
+Total number of frames to render.
+
+Once this limit is reached, no new characters will spawn and the existing characters will be allowed to die out. The
+animation will restart with a new random seed until `--iter` total animations have been completed (if specified).
 
 #### `-h`, `--help` ####
 

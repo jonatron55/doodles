@@ -32,7 +32,7 @@ use rand::{Rng, RngExt};
 
 /// Digital rain terminal animation.
 #[derive(Parser, Debug)]
-#[clap(author, version, about, long_about=None)]
+#[clap(author, version, about, long_about)]
 pub struct Args {
     #[clap(flatten)]
     common: CommonArgs,
@@ -45,12 +45,12 @@ pub struct Args {
     /// - "ascii": The 95 printable ASCII characters only.
     /// - "cp850": Printable characters from Codepage 850 or "DOS: United States".
     /// - "droplets": A custom set of droplet-like characters.
-    /// - "hira-kata": The fullwidth Hiragana and Katakana alphabets. Use with '--fullwidth' for correct spacing.
+    /// - "hira-kata": The fullwidth Hiragana and Katakana alphabets. Use with `--fullwidth` for correct spacing.
     /// - "katascii": Halfwidth Katakana and ASCII alphanumeric characters.
     ///
     /// If absent, a default alphabet of miscellaneous Latin, Greek, Cyrillic, punctuation, currency, control picture,
     /// and dingbat characters will be used.
-    #[arg(short = 'a', long)]
+    #[arg(short = 'a', long = "alpha", alias = "alphabet")]
     alphabet: Option<PathBuf>,
 
     /// How long each character lives (in frames).
@@ -66,12 +66,12 @@ pub struct Args {
     min_trail: u32,
 
     /// Probability of spawning a new stream in each cell per frame.
-    #[arg(short = 'p', long, default_value_t = 0.5)]
-    spawnprob: f64,
+    #[arg(short = 'p', long, alias = "spawnprob", default_value_t = 0.5)]
+    spawn_prob: f64,
 
     /// Probability of mutating an existing character in each cell per frame.
-    #[arg(short = 'm', long, default_value_t = 15.0)]
-    mutateprob: f64,
+    #[arg(short = 'm', long, alias = "mutateprob", default_value_t = 15.0)]
+    mutate_prob: f64,
 
     /// Color of the rain.
     #[arg(short = 'c', long)]
@@ -91,7 +91,7 @@ pub struct Args {
     /// Total number of frames to render.
     ///
     /// Once this limit is reached, no new characters will spawn and the existing characters will be allowed to die out.
-    /// The animation will restart with a new random seed until '--iter' total animations have been completed (if
+    /// The animation will restart with a new random seed until `--iter` total animations have been completed (if
     /// specified).
     #[arg(short = 't', long)]
     frames: Option<usize>,
@@ -118,7 +118,7 @@ fn main() -> IoResult<()> {
     }
 
     let mut iteration = 0;
-    'outer: while args.common.iter.map_or(true, |max_iter| iteration < max_iter) {
+    'outer: while args.common.max_iterations.map_or(true, |max_iter| iteration < max_iter) {
         iteration += 1;
         let mut frame = 0;
 

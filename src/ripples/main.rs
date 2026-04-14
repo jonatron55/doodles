@@ -18,7 +18,7 @@ mod ripples;
 
 /// Ripples terminal animation.
 #[derive(Parser, Debug)]
-#[clap(author, version, about, long_about=None)]
+#[clap(author, version, about, long_about)]
 pub struct Args {
     #[clap(flatten)]
     common: CommonArgs,
@@ -54,7 +54,7 @@ pub struct Args {
     /// Total number of frames to render.
     ///
     /// Once this limit is reached, no new waves will spawn and the existing waves will be allowed to die out. The
-    /// animation will restart with a new random seed until '--iter' total animations have been completed (if
+    /// animation will restart with a new random seed until `--iter` total animations have been completed (if
     /// specified).
     #[arg(short = 't', long)]
     frames: Option<usize>,

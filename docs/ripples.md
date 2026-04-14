@@ -3,6 +3,7 @@
 `ripples`
 =========
 
+Ripples terminal animation.
 
 Usage
 -----
@@ -13,7 +14,7 @@ ripples.exe [OPTIONS]
 
 ### Options ###
 
-#### `-n`, `--iter <ITER>` ####
+#### `-n`, `--iter <MAX_ITERATIONS>` ####
 
 Number of iterations to run.
 
@@ -37,7 +38,7 @@ program will render frames as fast as possible. This option is incompatible with
 
 #### `-P`, `--period <PERIOD>` ####
 
-Period of the waves in frames
+Period of a wave in frames. If not specified, this will be randomly chosen for each animation
 
 #### `-p`, `--spawnprob <SPAWNPROB>` ####
 
@@ -59,13 +60,13 @@ Medium base color
 
 #### `-k`, `--peak-color <PEAK_COLOR>` ####
 
-Medium peak color
+Color of wave peaks
 
 *possible values: black, red, green, yellow, blue, magenta, cyan, white*
 
 #### `-u`, `--trough-color <TROUGH_COLOR>` ####
 
-Medium trough color
+Color of wave troughs
 
 *possible values: black, red, green, yellow, blue, magenta, cyan, white*
 
@@ -73,11 +74,14 @@ Medium trough color
 
 Rendering style
 
-*possible values: splash, block, dots*
+*possible values: block, splash, dots*
 
 #### `-t`, `--frames <FRAMES>` ####
 
-Total number of frames to render
+Total number of frames to render.
+
+Once this limit is reached, no new waves will spawn and the existing waves will be allowed to die out. The animation
+will restart with a new random seed until `--iter` total animations have been completed (if specified).
 
 #### `-h`, `--help` ####
 

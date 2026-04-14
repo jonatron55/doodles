@@ -15,12 +15,12 @@ use crate::renderer::render;
 mod board;
 mod renderer;
 
-/// Conway's Game of Life simulator and renderer.
+/// Conway’s Game of Life simulator and renderer.
 ///
-/// This program reads an initial board configuration from a file, and simulates Conway's Game of Life, rendering the
+/// This program reads an initial board configuration from a file, and simulates Conway’s Game of Life, rendering the
 /// board to the terminal using colored output.
 ///
-/// In addition to the usual rules of Conway's Game of Life, this implementation includes colored cells, which modifies
+/// In addition to the usual rules of Conway’s Game of Life, this implementation includes colored cells, which modifies
 /// the rules as follows:
 ///
 /// 1. Any live cell with fewer than two live neighbours **of the same color** dies, as if by underpopulation.
@@ -60,7 +60,7 @@ fn main() -> IoResult<()> {
 
     // Outer loop
     'outer: loop {
-        if let Some(max_iterations) = args.common.iter
+        if let Some(max_iterations) = args.common.max_iterations
             && iteration >= max_iterations
         {
             break 'outer;

@@ -86,7 +86,7 @@ enum State {
     Stuck,
 }
 
-/// An agent's memory of a junction.
+/// An agent’s memory of a junction.
 #[derive(Clone, Debug)]
 struct Junction {
     /// Unexplored directions at this junction.
@@ -113,7 +113,7 @@ impl<'a> Agent<'a> {
         }
     }
 
-    /// Update the agent's state by performing one step of a randomized depth-first search. This will have no effect if
+    /// Update the agent’s state by performing one step of a randomized depth-first search. This will have no effect if
     /// the agent has already halted.
     pub fn update(&mut self, trinkets: &mut [Trinket], rand: &mut impl Rng) {
         match &self.state {
@@ -132,7 +132,7 @@ impl<'a> Agent<'a> {
                         self.dir = choice;
                         junction.open.remove(choice.into());
                     } else {
-                        // We've completely explored this junction; backtrack to the previous one.
+                        // We’ve completely explored this junction; backtrack to the previous one.
                         if let Some(from) = junction.from {
                             self.state = State::Moving(from);
                             self.dir = from;
@@ -144,7 +144,7 @@ impl<'a> Agent<'a> {
                         }
                     }
                 } else {
-                    // We've backed all the way to the start and exhausted all options. The maze is insoluble and we
+                    // We’ve backed all the way to the start and exhausted all options. The maze is insoluble and we
                     // should not reach this point if the maze generation algorithm is correct.
                     self.state = State::Stuck;
                 }
@@ -163,7 +163,7 @@ impl<'a> Agent<'a> {
                     self.position = position;
 
                     if !self.closed.contains(&position) {
-                        // We've never been here before; add a new junction to the stack.
+                        // We’ve never been here before; add a new junction to the stack.
                         let mut open = self.maze.walls(position).complement();
                         let from = dir.opposite();
                         open.remove(from.into());
@@ -213,7 +213,7 @@ impl<'a> Agent<'a> {
         queue!(stdout(), PrintStyledContent(self.color.bold_style().apply(s)),)
     }
 
-    /// Get the agent's rendering position in terminal character coordinates.
+    /// Get the agent’s rendering position in terminal character coordinates.
     ///
     /// If the agent is in the center of a cell, this will be the center of that cell. If the agent is moving between
     /// cells, this will be the position between the two cells in the direction of movement.

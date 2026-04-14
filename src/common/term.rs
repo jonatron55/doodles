@@ -26,8 +26,8 @@ pub struct CommonArgs {
     /// Number of iterations to run.
     ///
     /// If absent, the program will run indefinitely until interrupted.
-    #[arg(short = 'n', long)]
-    pub iter: Option<usize>,
+    #[arg(short = 'n', long = "iter", alias = "iterations")]
+    pub max_iterations: Option<usize>,
 
     /// Wait for keypress between frames.
     ///

@@ -3,7 +3,7 @@
 `conway`
 ========
 
-Conway's Game of Life simulator and renderer.
+Conway’s Game of Life simulator and renderer.
 
 Usage
 -----
@@ -12,9 +12,20 @@ Usage
 conway.exe [OPTIONS] [PATH]
 ```
 
+### Arguments ###
+
+#### `PATH` ####
+
+*Optional*
+
+Path to the board file to render.
+
+Board files should be plain text and contain rows of cells where white spaces represent dead cells and any other
+alphanumeric character represents a living cell. If no path is provided, a random board will be generated.
+
 ### Options ###
 
-#### `-n`, `--iter <ITER>` ####
+#### `-n`, `--iter <MAX_ITERATIONS>` ####
 
 Number of iterations to run.
 

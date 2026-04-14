@@ -6,7 +6,7 @@ use std::{
 
 // Descriptions are copied from the --help output of each binary, so they should be kept in sync with those.
 const BINS: [(&'static str, &'static str); 6] = [
-    ("conway", "Conway's Game of Life simulator and renderer."),
+    ("conway", "Conway’s Game of Life simulator and renderer."),
     ("digirain", "Digital rain terminal animation."),
     ("doodle", "Plays random doodles."),
     ("maze", "Generates and solves mazes."),

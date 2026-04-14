@@ -3,7 +3,7 @@
 `sorty`
 =======
 
-Visualizes different sorting algorithms
+Visualizes different sorting algorithms.
 
 Usage
 -----
@@ -14,7 +14,7 @@ sorty.exe [OPTIONS]
 
 ### Options ###
 
-#### `-n`, `--iter <ITER>` ####
+#### `-n`, `--iter <MAX_ITERATIONS>` ####
 
 Number of iterations to run.
 

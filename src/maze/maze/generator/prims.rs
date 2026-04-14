@@ -14,7 +14,7 @@ use crate::{
     maze::{Cell, Maze, RenderStyle},
 };
 
-/// A maze generator using Prim's algorithm.
+/// A maze generator using Prim’s algorithm.
 ///
 /// This algorithm starts with a single cell marked as visited and adds its unvisited neighbors to a frontier set. At
 /// each step, it randomly selects a cell from the frontier, carves a passage to an adjacent visited cell, and expands
