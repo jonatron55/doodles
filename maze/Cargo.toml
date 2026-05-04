@@ -1,0 +1,13 @@
+[package]
+name = "maze"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+bitflags.workspace = true
+bitvec.workspace = true
+doodle.path = "../doodle"
+clap = { workspace = true, features = ["derive"] }
+crossterm.workspace = true
+rand.workspace = true

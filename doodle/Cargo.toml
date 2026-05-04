@@ -1,0 +1,20 @@
+[package]
+name = "doodle"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "doodle"
+path = "src/lib.rs"
+
+[[bin]]
+name = "doodle"
+path = "src/main.rs"
+
+[dependencies]
+bitflags.workspace = true
+clap = { workspace = true, features = ["derive"] }
+crossterm.workspace = true
+ctrlc.workspace = true
+rand.workspace = true
