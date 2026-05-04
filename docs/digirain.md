@@ -100,7 +100,7 @@ Lay out the characters using fullwidth glyphs.
 Use this in combinations with alphabets containing fullwidth characters (e.g. "hira-kata") for correct spacing. Do not
 mix fullwidth and halfwidth characters.
 
-#### `-t`, `--frames <FRAMES>` ####
+#### `-f`, `--frames <FRAMES>` ####
 
 Total number of frames to render.
 

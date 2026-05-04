@@ -19,8 +19,7 @@ use doodle::{
     term::{CommonArgs, WaitResult, cleanup_term, setup_term},
     vec::{UVec2, uvec2},
 };
-use rand::seq::SliceRandom;
-use rand::{Rng, RngExt};
+use rand::{Rng, RngExt, seq::SliceRandom};
 
 use crate::{
     agent::{Agent, RenderStyle as AgentRenderStyle},

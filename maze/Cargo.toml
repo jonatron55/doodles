@@ -1,5 +1,6 @@
 [package]
 name = "maze"
+description = "Generates and solves mazes."
 authors.workspace = true
 version.workspace = true
 edition.workspace = true
@@ -11,3 +12,6 @@ doodle.path = "../doodle"
 clap = { workspace = true, features = ["derive"] }
 crossterm.workspace = true
 rand.workspace = true
+
+[build-dependencies]
+winresource.workspace = true

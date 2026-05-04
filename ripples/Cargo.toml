@@ -1,5 +1,6 @@
 [package]
 name = "ripples"
+description = "Ripples terminal animation."
 authors.workspace = true
 version.workspace = true
 edition.workspace = true
@@ -9,3 +10,6 @@ doodle.path = "../doodle"
 clap = { workspace = true, features = ["derive"] }
 crossterm.workspace = true
 rand.workspace = true
+
+[build-dependencies]
+winresource.workspace = true

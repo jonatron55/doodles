@@ -1,4 +1,4 @@
-use crate::common::{
+use crate::{
     rect::URect2,
     vec::{UVec2, uvec2},
 };
