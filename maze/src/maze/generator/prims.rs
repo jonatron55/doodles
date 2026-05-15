@@ -1,89 +1,137 @@
 // Copyright (c) 2025 Jonathon Burnham Cobb
 // Licensed under the MIT-0 license.
 
-use std::{collections::HashMap, hash::RandomState, io::Result as IoResult};
+use std::{cmp::Ordering, collections::BinaryHeap, hash::RandomState, io::Result as IoResult};
 
 use doodle::{
-    dir::Direction,
+    dir::{Axis, Direction},
     vec::{UVec2, uvec2},
 };
-use rand::{Rng, RngExt, seq::IteratorRandom};
+use rand::{Rng, RngExt};
 
 use crate::{
+    BiasMode,
     agent::RenderStyle as AgentRenderStyle,
     maze::{Cell, Maze, RenderStyle},
 };
 
 /// A maze generator using Prim’s algorithm.
 ///
-/// This algorithm starts with a single cell marked as visited and adds its unvisited neighbors to a frontier set. At
-/// each step, it randomly selects a cell from the frontier, carves a passage to an adjacent visited cell, and expands
-/// the frontier. This continues until all cells have been visited.
+/// This algorithm starts with a single cell marked as visited and adds its unvisited neighbors to a frontier set.
+/// Neighbors are queued with a random weight, based on the specified bias. At each step, it dequeues a cell from the
+/// frontier, carves a passage to an adjacent visited cell, and expands the frontier. This continues until all cells
+/// have been visited.
 ///
 /// This algorithm tends to produce mazes with many short dead ends and has a more uniform distribution of passage
-/// lengths. It does not support a bias in passage direction.
+/// lengths.
 #[derive(Debug)]
 pub struct PrimsMazeBuilder<'a> {
     maze: &'a mut Maze,
 
-    /// Maps a frontier cell to the direction taken to reach it.
-    frontier: HashMap<UVec2, Direction>,
+    /// Priority queue of edges connecting visited cells to unvisited neighbors, ordered by weight.
+    frontier: BinaryHeap<Edge>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct Edge {
+    from: UVec2,
+    to: UVec2,
+    weight: u32,
 }
 
 impl<'a> PrimsMazeBuilder<'a> {
-    pub fn new<R: Rng>(maze: &'a mut Maze, rand: &mut R) -> Self {
+    pub fn new(maze: &'a mut Maze, rand: &mut impl Rng, bias: &BiasMode) -> Self {
         let initial = uvec2(rand.random_range(0..maze.size.x), rand.random_range(0..maze.size.y));
 
         let initial_idx = maze.cell_index(initial);
         maze.cells[initial_idx].insert(Cell::VISITED);
 
-        let mut frontier = HashMap::new();
-
-        if initial.x > 0 {
-            frontier.insert(uvec2(initial.x - 1, initial.y), Direction::West);
-        }
-        if initial.x + 1 < maze.size.x {
-            frontier.insert(uvec2(initial.x + 1, initial.y), Direction::East);
-        }
-        if initial.y > 0 {
-            frontier.insert(uvec2(initial.x, initial.y - 1), Direction::North);
-        }
-        if initial.y + 1 < maze.size.y {
-            frontier.insert(uvec2(initial.x, initial.y + 1), Direction::South);
-        }
-
-        PrimsMazeBuilder { maze, frontier }
+        let mut builder = PrimsMazeBuilder {
+            maze,
+            frontier: BinaryHeap::new(),
+        };
+        builder.push_frontier(initial, rand, bias);
+        builder
     }
 
-    pub fn build_next<R: Rng>(&mut self, rand: &mut R) -> bool {
-        if self.frontier.is_empty() {
-            return false;
-        }
+    pub fn build_next(&mut self, rand: &mut impl Rng, bias: &BiasMode) -> bool {
+        loop {
+            let Some(Edge { from, to, .. }) = self.frontier.pop() else {
+                return false;
+            };
 
-        let next = *self.frontier.keys().choose(rand).unwrap();
-        let next_idx = self.maze.cell_index(next);
-        let dir = self.frontier.remove(&next).unwrap();
-        let from = dir.opposite().move_point(next);
+            let to_idx = self.maze.cell_index(to);
 
-        self.maze.cells[next_idx].insert(Cell::VISITED);
-        self.maze.tunnel_between(from, next);
+            if !self.maze.cells[to_idx].contains(Cell::VISITED) {
+                self.maze.cells[to_idx].insert(Cell::VISITED);
+                self.maze.tunnel_between(from, to);
 
-        self.maze.invalidate();
+                self.maze.invalidate();
 
-        // Add neighbors of next to the frontier.
-        for dir in Direction::ALL.iter() {
-            if let Some(neighbor) = dir.move_point_within(next, self.maze.size) {
-                let neighbor_idx = self.maze.cell_index(neighbor);
-                if !self.maze.cells[neighbor_idx].contains(Cell::VISITED) {
-                    self.frontier.entry(neighbor).or_insert(*dir);
-                }
+                self.push_frontier(to, rand, bias);
+
+                return true;
             }
         }
-
-        true
     }
 
     pub fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
         self.maze.render(style, &[], &[], &AgentRenderStyle::default(), random_state)
+    }
+
+    /// Enqueues the unvisited neighbors of the given cell into the frontier, with weights based on the specified bias.
+    fn push_frontier(&mut self, cell: UVec2, rand: &mut impl Rng, bias: &BiasMode) {
+        let bias = bias.sample(cell);
+
+        for dir in Direction::ALL {
+            let Some(neighbor) = dir.move_point_within(cell, self.maze.size) else {
+                continue;
+            };
+
+            if self.maze.cells[self.maze.cell_index(neighbor)].contains(Cell::VISITED) {
+                continue;
+            }
+
+            // When weighting edges, we use the highest bit to encode the bias direction, and the remaining bits to
+            // randomize the order of edges with the same bias. This ensures that the bias is respected while still
+            // randomly shuffling edges of the same bias category.
+            let weight: u32 = match dir.axis() {
+                Axis::Horizontal => {
+                    if rand.random_bool(bias) {
+                        0x0000_0000
+                    } else {
+                        0x8000_0000
+                    }
+                }
+                Axis::Vertical => {
+                    if rand.random_bool(bias) {
+                        0x8000_0000
+                    } else {
+                        0x0000_0000
+                    }
+                }
+            };
+            let weight = weight | (rand.random::<u32>() & 0x7FFF_FFFF);
+
+            self.frontier.push(Edge::new(cell, neighbor, weight));
+        }
+    }
+}
+
+impl Edge {
+    fn new(from: UVec2, to: UVec2, weight: u32) -> Self {
+        Edge { from, to, weight }
+    }
+}
+
+impl Ord for Edge {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.weight.cmp(&other.weight)
+    }
+}
+
+impl PartialOrd for Edge {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }

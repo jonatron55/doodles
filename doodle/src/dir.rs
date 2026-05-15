@@ -19,6 +19,13 @@ pub enum Direction {
     West = 0b1000,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Axis {
+    Horizontal = 0,
+    Vertical = 1,
+}
+
 bitflags! {
     /// A set of cardinal directions.
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -44,28 +51,56 @@ impl Direction {
         }
     }
 
+    /// Returns the axis of the direction.
+    pub fn axis(self) -> Axis {
+        match self {
+            Direction::North | Direction::South => Axis::Vertical,
+            Direction::East | Direction::West => Axis::Horizontal,
+        }
+    }
+
     /// Returns a list of directions shuffled with the given bias.
     ///
     /// The `bias` parameter controls the likelihood of horizontal directions appearing before vertical directions. A
     /// bias of `1.0` means vertical directions will always come first, while a bias of `0.0` means horizontal
     /// directions will always come first. A bias of `0.5` results in a uniform random shuffle.
     pub fn biased_shuffle(rand: &mut impl Rng, bias: f64) -> [Self; 4] {
-        let (h0, h1) = if rand.random_bool(0.5) {
-            (Direction::East, Direction::West)
+        let h = if rand.random_bool(0.5) {
+            [Direction::East, Direction::West]
         } else {
-            (Direction::West, Direction::East)
-        };
-        let (v0, v1) = if rand.random_bool(0.5) {
-            (Direction::North, Direction::South)
-        } else {
-            (Direction::South, Direction::North)
+            [Direction::West, Direction::East]
         };
 
-        if rand.random_bool(bias) {
-            [v0, v1, h0, h1]
+        let v = if rand.random_bool(0.5) {
+            [Direction::North, Direction::South]
         } else {
-            [h0, h1, v0, v1]
+            [Direction::South, Direction::North]
+        };
+
+        let mut hi = 0;
+        let mut vi = 0;
+
+        let mut result = [Direction::North; 4];
+
+        for i in 0..4 {
+            if hi < 2 && vi < 2 {
+                if rand.random_bool(bias) {
+                    result[i] = h[hi];
+                    hi += 1;
+                } else {
+                    result[i] = v[vi];
+                    vi += 1;
+                }
+            } else if hi < 2 {
+                result[i] = h[hi];
+                hi += 1;
+            } else {
+                result[i] = v[vi];
+                vi += 1;
+            }
         }
+
+        result
     }
 
     /// Returns the opposite direction.

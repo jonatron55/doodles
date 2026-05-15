@@ -410,7 +410,7 @@ impl MazeBuilder<'_> {
     pub fn build_next(&mut self, rand: &mut impl Rng, bias: &BiasMode) -> bool {
         match self {
             MazeBuilder::Dfs(builder) => builder.build_next(rand, bias),
-            MazeBuilder::Prims(builder) => builder.build_next(rand),
+            MazeBuilder::Prims(builder) => builder.build_next(rand, bias),
             MazeBuilder::Wilsons(builder) => builder.build_next(rand, bias),
         }
     }

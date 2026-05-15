@@ -253,10 +253,11 @@ fn main() -> IoResult<()> {
             BiasMode::Uniform(bias_value.clamp(0.0, 1.0))
         } else {
             if rand.random_bool(0.5) {
-                match rand.random_range(0..3) {
+                match rand.random_range(0..4) {
                     0 => BiasMode::Uniform(0.2),
                     1 => BiasMode::Uniform(0.7),
-                    _ => BiasMode::Image(Image::new_checkered(size, uvec2(size.x / 5, size.y / 3))),
+                    2 => BiasMode::Image(Image::new_checkered(size, uvec2(size.x / 5, size.y / 3))),
+                    _ => BiasMode::Image(Image::new_concentric(size, rand.random_range(4..10))),
                 }
             } else {
                 BiasMode::Uniform(0.5)
@@ -267,7 +268,7 @@ fn main() -> IoResult<()> {
 
         let mut builder = match algorithm {
             MazeAlgorithm::Dfs => MazeBuilder::Dfs(DfsMazeBuilder::new(&mut maze, &mut rand)),
-            MazeAlgorithm::Prims => MazeBuilder::Prims(PrimsMazeBuilder::new(&mut maze, &mut rand)),
+            MazeAlgorithm::Prims => MazeBuilder::Prims(PrimsMazeBuilder::new(&mut maze, &mut rand, &bias)),
             MazeAlgorithm::Wilsons => MazeBuilder::Wilsons(WilsonsMazeBuilder::new(&mut maze, &mut rand)),
         };
 
