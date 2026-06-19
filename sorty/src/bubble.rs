@@ -7,14 +7,14 @@ use std::cmp::Ordering;
 #[derive(Clone, Copy, Debug)]
 pub struct BubbleState {
     /// Current direction of the pass.
-    direction: Direction,
+    pub direction: Direction,
 
     /// Current index within the pass.
-    index: usize,
+    pub index: usize,
 }
 
 #[derive(Clone, Copy, Debug)]
-enum Direction {
+pub enum Direction {
     LeftToRight,
     RightToLeft,
 }

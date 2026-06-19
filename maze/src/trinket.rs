@@ -7,7 +7,7 @@ use crossterm::{queue, style::PrintStyledContent};
 use doodle::{color::Color, vec::UVec2};
 
 const TRINKET_CHARS: [char; 16] = [
-    '♦', '♣', '♥', '♠', '☼', '✶', 'Ω', '∞', '♪', '♬', '$', '¢', '£', '¥', '☙', '❧',
+    '♦', '♣', '♥', '♠', '☼', '⚡', 'Ω', '∞', '♪', '♬', '$', '¢', '£', '¥', '@', '➰',
 ];
 const COLLECT_CHARS: [char; 16] = [
     '●', '○', '◌', '¤', '*', '¤', '%', '*', '×', '+', '×', '+', '∙', '◦', '·', ' ',

@@ -7,26 +7,26 @@ use std::cmp::Ordering;
 #[derive(Clone, Debug)]
 pub struct QsortState {
     /// Stack of substates for each recursive step.
-    stack: Vec<Substate>,
+    pub stack: Vec<Substate>,
 }
 
 /// Persisted substate for a single quicksort partitioning step.
 #[derive(Clone, Debug)]
-struct Substate {
+pub struct Substate {
     /// Lower bound of the current subslice.
-    low: usize,
+    pub low: usize,
 
     /// Upper bound of the current subslice.
-    high: usize,
+    pub high: usize,
 
     /// Pivot value for the current partitioning step.
-    pivot: usize,
+    pub pivot: usize,
 
     /// Current index for placing elements less than the pivot.
-    i: usize,
+    pub i: usize,
 
     /// Current index for scanning through the subslice.
-    j: usize,
+    pub j: usize,
 }
 
 /// Perform a single step of the quicksort algorithm.

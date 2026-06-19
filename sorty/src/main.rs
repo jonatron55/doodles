@@ -119,7 +119,12 @@ fn main() -> IoResult<()> {
         } {
             let mut converged = false;
             while !converged {
-                converged = renderer::render(&mut displayed, &actual, size, colors, style, ordering)?;
+                let highlight = match &sort_state {
+                    SortState::Bubble(state) => Some(state.index),
+                    SortState::QSort(state) => state.stack.last().map_or(None, |s| Some(s.j - 1)),
+                };
+
+                converged = renderer::render(&mut displayed, &actual, size, colors, style, ordering, highlight)?;
 
                 match args.common.wait()? {
                     WaitResult::Continue => {}

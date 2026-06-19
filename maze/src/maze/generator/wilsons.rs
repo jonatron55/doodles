@@ -14,7 +14,7 @@ use crate::{
     maze::{BiasMode, Cell, Maze, RenderStyle},
 };
 
-/// A maze generator using Wilson’s algorithm.
+/// A maze generator using Wilson’s algorithm (loop-erased random walks).
 ///
 /// This algorithm selects a cell at random to initialize the maze, then performs random walks from unvisited cells
 /// until they connect to the existing maze. If a walk intersects itself, the loop is erased and the walk continues from
@@ -157,5 +157,12 @@ impl<'a> WilsonsMazeBuilder<'a> {
         }
 
         None
+    }
+
+    pub fn seed(maze: &mut Maze, rand: &mut impl Rng) {
+        // Mark a small loop of cells as visited to create an initial maze. Strictly speaking, Wilson’s algorithm
+        // requires only one cell to be visited to start. However, this is very slow to converge for larger mazes during
+        // early iterations. Instead, we make a small rectangle at a random position based on the maze size. This
+        // creates an small bias in the final maze but improves early convergence time.
     }
 }

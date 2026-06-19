@@ -10,6 +10,7 @@ use crossterm::{
 };
 use doodle::{
     color::Color,
+    image::Image,
     math::Lerp,
     row_major::IterRowMajor,
     vec::{UVec2, uvec2},
@@ -36,6 +37,9 @@ pub struct Board {
 
     /// Alphabet of characters to randomly choose from.
     alphabet: Vec<char>,
+
+    /// Optional image to use as a bias for probabilities.
+    image: Option<Image>,
 }
 
 /// A single cell on the board.
@@ -59,12 +63,16 @@ pub struct Cell {
 
 impl Board {
     /// Creates a new empty board with the given dimensions and optional alphabet.
-    pub fn new(size: UVec2, alphabet: Option<&str>) -> Self {
+    pub fn new(size: UVec2, alphabet: Option<&str>, image: Option<Image>) -> Self {
         let alphabet = alphabet
             .unwrap_or(DEFAULT_ALPHABET)
             .chars()
             .filter(|ch| !ch.is_whitespace())
             .collect::<Vec<char>>();
+
+        if let Some(image) = &image {
+            assert_eq!(size, image.size(), "Image size must match board size");
+        }
 
         let buffers = (
             vec![Cell::default(); size.x * size.y],
@@ -75,28 +83,34 @@ impl Board {
             size,
             buffers,
             alphabet,
+            image,
         }
     }
 
     /// Resize the board to new dimensions. Existing cell data will be preserved where possible and new cells will be
     /// initially empty.
-    pub fn resize(self, new_size: UVec2) -> Self {
-        let mut new_board = Board {
-            size: new_size,
-            alphabet: self.alphabet.clone(),
-            buffers: (
-                vec![Cell::default(); new_size.x * new_size.y],
-                vec![Cell::default(); new_size.x * new_size.y],
-            ),
-        };
+    pub fn resize(self, new_size: UVec2, image: Option<Image>) -> Self {
+        let mut buffers = (
+            vec![Cell::default(); new_size.x * new_size.y],
+            vec![Cell::default(); new_size.x * new_size.y],
+        );
+
+        if let Some(image) = &image {
+            assert_eq!(new_size, image.size(), "Image size must match board size");
+        }
 
         for pos in self.size.iter_row_major() {
             let src = self.cell_index(pos);
-            let dst = new_board.cell_index(pos);
-            new_board.buffers.0[dst] = self.buffers.0[src].clone();
+            let dst = pos.y % new_size.y * new_size.x + pos.x % new_size.x;
+            buffers.0[dst] = self.buffers.0[src].clone();
         }
 
-        new_board
+        Self {
+            size: new_size,
+            alphabet: self.alphabet,
+            buffers,
+            image,
+        }
     }
 
     /// Advance the board by one frame, consuming the current board and producing `Some(new_board)` if there are still
@@ -111,23 +125,31 @@ impl Board {
     ) -> Option<Self> {
         self.buffers.1.fill(Cell::default());
 
-        // Random distribution for spawning new head cells. Will be rolled for each empty cell.
-        let spawn = Bernoulli::new(f64::saturating_lerp(
-            0.0,
-            args.spawn_prob * 0.01,
-            (frame as f64 / args.warmup as f64).powi(2),
-        ))
-        .unwrap();
-
         let mutate = Bernoulli::new(args.mutate_prob * 0.01).unwrap();
-
-        // Random distribution for continuing trails. Will be rolled for each cell with a `trail_length` between
-        // `min_trail` and `max_trail` (cells shorter than `min_trail` always continue and cells longer than `max_trail`
-        // never continue).
-        let trail = Bernoulli::new(((args.max_trail - args.min_trail) as f64).recip()).unwrap();
 
         for pos in self.size.iter_row_major() {
             let index = self.cell_index(pos);
+            let bias = self.image.as_ref().map_or(1.0, |img| img.pixel(pos));
+
+            // Random distribution for spawning new head cells.
+            let spawn = Bernoulli::new(f64::saturating_lerp(
+                0.0,
+                args.spawn_prob * 0.01 * bias,
+                (frame as f64 / args.warmup as f64).powi(2),
+            ))
+            .unwrap();
+
+            // Random distribution for continuing trails. Will be rolled for each cell with a `trail_length` between
+            // `min_trail` and `max_trail` (cells shorter than `min_trail` always continue and cells longer than
+            // `max_trail` never continue).
+            let min_trail = args.min_trail as f64;
+            let max_trail = f64::lerp(min_trail, args.max_trail as f64, bias);
+            let trail_prob = if max_trail > min_trail {
+                (max_trail - min_trail).recip()
+            } else {
+                0.0
+            };
+            let trail = Bernoulli::new(trail_prob).unwrap();
 
             if self.buffers.0[index].is_alive(args) {
                 // If we have a living cell, age it and possibly spawn a new cell below.
@@ -174,6 +196,7 @@ impl Board {
                 size: self.size,
                 buffers: (self.buffers.1, self.buffers.0),
                 alphabet: self.alphabet,
+                image: self.image,
             })
         } else {
             None

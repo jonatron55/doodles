@@ -42,6 +42,7 @@ pub fn render(
     colors: [Color; 2],
     style: RenderStyle,
     ordering: Ordering,
+    highlight: Option<usize>,
 ) -> IoResult<bool> {
     let mut stdout = stdout();
 
@@ -87,7 +88,11 @@ pub fn render(
             let frac = value % 8;
             let whole = value / 8;
 
-            let color = if changed[x] { colors[1] } else { colors[0] };
+            let color = if highlight.map_or(false, |h| h == x) || changed[x] {
+                colors[1]
+            } else {
+                colors[0]
+            };
 
             let style = if y < whole || (y == whole && frac > 0) {
                 color.style()

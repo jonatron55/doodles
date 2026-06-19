@@ -189,7 +189,7 @@ impl Maze {
         let bmp_size = self.bitmap_size();
 
         for y in 0..bmp_size.y {
-            queue!(stdout, MoveTo(0, y as u16),)?;
+            queue!(stdout, MoveTo(0, y as u16))?;
             for x in 0..bmp_size.x {
                 let idx = y * bmp_size.x + x;
 

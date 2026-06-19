@@ -1,14 +1,9 @@
 // Copyright (c) 2025 Jonathon Burnham Cobb
 // Licensed under the MIT-0 license.
 
-use std::{
-    borrow::Cow,
-    fs,
-    io::{Result as IoResult, stdout},
-    path::PathBuf,
-    str::FromStr,
-};
+use std::{borrow::Cow, fs, io::stdout, path::PathBuf, str::FromStr};
 
+use anyhow::Result as AnyResult;
 use clap::{Parser, ValueEnum, builder::PossibleValue};
 use crossterm::{
     cursor::MoveTo,
@@ -19,6 +14,7 @@ use crossterm::{
 use doodle::{
     color::Color,
     error,
+    image::Image,
     term::{CommonArgs, WaitResult, cleanup_term, setup_term},
     vec::UVec2,
 };
@@ -93,6 +89,19 @@ pub struct Args {
     /// specified).
     #[arg(short = 'f', long)]
     frames: Option<usize>,
+
+    /// Image file to use for biasing probabilities.
+    ///
+    /// This argument may specify a path to an image in a standard format, or one of the following special cases:
+    ///
+    /// - "smiley": a smiley face emoji.
+    /// - "skull": a skull emoji.
+    /// - "checkered({width},{height})": a checkerboard pattern with the given check size.
+    /// - "concentric{width}": concentric rings with the given ring width.
+    /// - "hgrad": a horizontal gradient from black to white.
+    /// - "vgrad": a vertical gradient from black to white.
+    #[clap(short = 'I', long)]
+    pub image: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -103,7 +112,31 @@ enum ColorArg {
     Random = 9,
 }
 
-fn main() -> IoResult<()> {
+fn get_image<R: Rng>(arg: &Option<String>, size: UVec2, rand: &mut R) -> AnyResult<Option<Image>> {
+    if let Some(image_arg) = arg {
+        if image_arg != "none" {
+            match Image::from_str(image_arg, size) {
+                Ok(img) => Ok(Some(img)),
+                Err(err) => {
+                    error!("Failed to read image {}: {}", image_arg, err);
+                    return Err(err.into());
+                }
+            }
+        } else {
+            Ok(None)
+        }
+    } else if rand.random_bool(0.5) {
+        Ok(Some(match rand.random_range(0..3) {
+            0 => Image::random_graphic(size, rand),
+            1 => Image::default_checkered(size),
+            _ => Image::random_concentric(size, rand),
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+fn main() -> AnyResult<()> {
     let args = Args::parse();
 
     let mut stdout = stdout();
@@ -111,7 +144,7 @@ fn main() -> IoResult<()> {
     setup_term()?;
 
     match args.common.wait()? {
-        WaitResult::Exit => return cleanup_term(),
+        WaitResult::Exit => return Ok(cleanup_term()?),
         _ => {}
     }
 
@@ -137,14 +170,16 @@ fn main() -> IoResult<()> {
                     "KATASCII" => Some(Cow::Borrowed(include_str!("alphabets/katascii.txt"))),
                     _ => {
                         error!("Failed to read alphabet file {}: {}", path.display(), err);
-                        return Err(err);
+                        return Err(err.into());
                     }
                 },
             },
             None => None,
         };
 
-        let mut board = Board::new(size, alphabet.as_deref());
+        let img = get_image(&args.image, size, &mut rand)?;
+
+        let mut board = Board::new(size, alphabet.as_deref(), img);
         let color = args.color.unwrap_or_else(|| ColorArg::choose(&mut rand));
         let mut total_frames = args.frames;
 
@@ -167,7 +202,8 @@ fn main() -> IoResult<()> {
                         size.x /= 2;
                     }
                     execute!(stdout, MoveTo(0, 0), Clear(ClearType::All))?;
-                    board = board.resize(size);
+                    let img = get_image(&args.image, size, &mut rand)?;
+                    board = board.resize(size, img);
                 }
                 WaitResult::Next => {
                     total_frames = if let Some(max_iter) = total_frames {

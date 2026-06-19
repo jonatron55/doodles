@@ -1,13 +1,9 @@
 // Copyright (c) 2025 Jonathon Burnham Cobb
 // Licensed under the MIT-0 license.
 
-use std::{
-    fs,
-    hash::RandomState,
-    io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult, stdout},
-    path::PathBuf,
-};
+use std::{hash::RandomState, io::stdout};
 
+use anyhow::Result as AnyResult;
 use clap::{Parser, ValueEnum};
 use crossterm::{
     execute,
@@ -17,7 +13,7 @@ use doodle::{
     color::Color,
     image::Image,
     term::{CommonArgs, WaitResult, cleanup_term, setup_term},
-    vec::{UVec2, uvec2},
+    vec::UVec2,
 };
 use rand::{Rng, RngExt, seq::SliceRandom};
 
@@ -144,10 +140,16 @@ pub struct BiasArg {
     /// The brightness of each pixel influences the direction of passages in the corresponding maze cell. Darker pixels
     /// favor horizontal passages, while lighter pixels favor vertical passages.
     ///
-    /// This argument may specify a path to an image in a standard format, or either one 'checkered(width,height)', or
-    /// 'concentric(width)'.
+    /// This argument may specify a path to an image in a standard format, or one of the following special cases:
+    ///
+    /// - "smiley": a smiley face emoji.
+    /// - "skull": a skull emoji.
+    /// - "checkered({width},{height})": a checkerboard pattern with the given check size.
+    /// - "concentric{width}": concentric rings with the given ring width.
+    /// - "hgrad": a horizontal gradient from black to white.
+    /// - "vgrad": a vertical gradient from black to white.
     #[clap(short = 'I', long, conflicts_with = "bias")]
-    pub image: Option<PathBuf>,
+    pub image: Option<String>,
 }
 
 /// Predefined maze render styles corresponding to `MazeRenderArg`.
@@ -194,13 +196,13 @@ const MAZE_STYLES: [MazeRenderStyle; 8] = [
     },
 ];
 
-fn main() -> IoResult<()> {
+fn main() -> AnyResult<()> {
     let args = Args::parse();
 
     setup_term()?;
 
     match args.common.wait()? {
-        WaitResult::Exit => return cleanup_term(),
+        WaitResult::Exit => return Ok(cleanup_term()?),
         _ => {}
     }
 
@@ -231,33 +233,25 @@ fn main() -> IoResult<()> {
         let mut maze = Maze::new(size);
 
         let bias = if let Some(bias_image_path) = &args.bias.image {
-            if fs::exists(bias_image_path)? {
-                unimplemented!()
-            } else {
-                let s = bias_image_path.to_string_lossy();
-                if s.starts_with("checkered")
-                    && let Ok(check_size) = s["checkered".len()..].parse::<UVec2>()
-                {
-                    BiasMode::Image(Image::new_checkered(size, check_size))
-                } else if s.starts_with("concentric")
-                    && let Ok(ring_width) = s["concentric".len()..].parse::<usize>()
-                {
-                    BiasMode::Image(Image::new_concentric(size, ring_width))
-                } else {
+            match Image::from_str(bias_image_path, size) {
+                Ok(image) => BiasMode::Image(image),
+                Err(e) => {
                     cleanup_term()?;
-                    eprintln!("Bias image path '{}' does not exist.", bias_image_path.display());
-                    return Err(IoError::from(IoErrorKind::NotFound));
+                    eprintln!("Failed to load bias image '{}': {e}", bias_image_path);
+                    return Err(e.into());
                 }
             }
         } else if let Some(bias_value) = args.bias.bias {
             BiasMode::Uniform(bias_value.clamp(0.0, 1.0))
         } else {
             if rand.random_bool(0.5) {
-                match rand.random_range(0..4) {
+                match rand.random_range(0..6) {
                     0 => BiasMode::Uniform(0.2),
                     1 => BiasMode::Uniform(0.7),
-                    2 => BiasMode::Image(Image::new_checkered(size, uvec2(size.x / 5, size.y / 3))),
-                    _ => BiasMode::Image(Image::new_concentric(size, rand.random_range(4..10))),
+                    2 => BiasMode::Image(Image::random_graphic(size, &mut rand)),
+                    3 => BiasMode::Image(Image::default_checkered(size)),
+                    4 => BiasMode::Image(Image::random_concentric(size, &mut rand)),
+                    _ => BiasMode::Image(Image::random_gradient(size, &mut rand)),
                 }
             } else {
                 BiasMode::Uniform(0.5)

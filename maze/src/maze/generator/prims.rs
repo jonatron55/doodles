@@ -15,7 +15,7 @@ use crate::{
     maze::{Cell, Maze, RenderStyle},
 };
 
-/// A maze generator using Prim’s algorithm.
+/// A maze generator using Prim’s algorithm (minimum spanning tree).
 ///
 /// This algorithm starts with a single cell marked as visited and adds its unvisited neighbors to a frontier set.
 /// Neighbors are queued with a random weight, based on the specified bias. At each step, it dequeues a cell from the
