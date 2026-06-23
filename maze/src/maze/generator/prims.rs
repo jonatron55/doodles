@@ -54,6 +54,8 @@ impl<'a> PrimsMazeBuilder<'a> {
         builder
     }
 
+    /// Performs a single step of maze generation. Returns `true` if further calls are needed to complete the maze, or
+    /// `false` if generation is complete.
     pub fn build_next(&mut self, rand: &mut impl Rng, bias: &BiasMode) -> bool {
         loop {
             let Some(Edge { from, to, .. }) = self.frontier.pop() else {

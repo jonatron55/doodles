@@ -50,6 +50,8 @@ impl<'a> DfsMazeBuilder<'a> {
         }
     }
 
+    /// Performs a single step of maze generation. Returns `true` if further calls are needed to complete the maze, or
+    /// `false` if generation is complete.
     pub fn build_next(&mut self, rand: &mut impl Rng, bias: &BiasMode) -> bool {
         // Get the next unvisited cell.
         let Some(DfsOpenCell { head, from }) = self.pop_unvisited() else {
@@ -67,11 +69,13 @@ impl<'a> DfsMazeBuilder<'a> {
             self.maze.tunnel_between(from, head);
         }
 
-        // Push unvisited neighbors in random order.
+        // Push unvisited neighbors in random order according to the sampled bias. The bias argument to `biased_shuffle`
+        // is inverted because we want to push in reverse order of the input bias so that the most biased directions are
+        // at the top of our stack (this could also be achieved by reversing the output, but this is fewer operations).
         let bias = bias.sample(head);
-        let dirs = Direction::biased_shuffle(rand, bias);
+        let dirs = Direction::biased_shuffle(rand, 1.0 - bias);
 
-        for &dir in &dirs {
+        for dir in dirs {
             let Some(next) = dir.move_point_within(head, self.maze.size) else {
                 continue;
             };

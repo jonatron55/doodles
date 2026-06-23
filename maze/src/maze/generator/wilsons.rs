@@ -20,13 +20,15 @@ use crate::{
 /// until they connect to the existing maze. If a walk intersects itself, the loop is erased and the walk continues from
 /// the point of intersection. The algorithm  continues until all cells have been visited
 ///
-/// Compared to other algorithms, Wilson’s method tends to produce mazes with a more uniform distribution of passage
-/// lengths and dead ends. However, it can be very slow to converge for larger mazes.
+/// Compared to other algorithms, Wilson’s method produces mazes with a uniform distribution of passage lengths and dead
+/// ends. However, it can be very slow to converge for larger mazes.
 #[derive(Debug)]
 pub struct WilsonsMazeBuilder<'a> {
     maze: &'a mut Maze,
     open: Vec<UVec2>,
     path: Vec<UVec2>,
+    seeding: bool,
+    seed_length: usize,
 }
 
 impl<'a> WilsonsMazeBuilder<'a> {
@@ -38,12 +40,14 @@ impl<'a> WilsonsMazeBuilder<'a> {
 
         open.shuffle(rand);
 
-        // Start by marking one random solitary cell as visited.
-        let initial = open.pop().unwrap();
-        let initial_idx = maze.cell_index(initial);
-        maze.cells[initial_idx].insert(Cell::VISITED);
+        // The length of the seed passage will be 0.5% of the maze's area. This is a departure from the true Wilson’s
+        // algorithm, which starts with a single seed cell. However, the larger seed helps to speed up convergence and
+        // the resulting bias is negligible (larger seed lengths would have a more significant impact).
 
-        // Start the first walk from another random cell.
+        let seed_length = (maze.size().prod() / 200).max(1);
+
+        // Start the first walk a random cell. This walk will continue until the seed length is reached, since there are
+        // no existing paths to connect to yet.
         let head = open.pop().unwrap();
         let head_idx = maze.cell_index(head);
         maze.cells[head_idx].insert(Cell::VISITED);
@@ -52,9 +56,13 @@ impl<'a> WilsonsMazeBuilder<'a> {
             maze,
             open,
             path: vec![head],
+            seeding: true,
+            seed_length,
         }
     }
 
+    /// Performs a single step of maze generation. Returns `true` if further calls are needed to complete the maze, or
+    /// `false` if generation is complete.
     pub fn build_next(&mut self, rand: &mut impl Rng, bias: &BiasMode) -> bool {
         let head = *self.path.last().unwrap();
         let from = if self.path.len() >= 2 {
@@ -63,11 +71,12 @@ impl<'a> WilsonsMazeBuilder<'a> {
             None
         };
 
-        // We’ll try to move randomly in each direction until we find a valid move.
+        // We’ll try to move randomly in each direction until we find a valid move. Directions are shuffled according to
+        // the sampled bias, which may favour horizontal or vertical movement.
         let bias = bias.sample(head);
         let dirs = Direction::biased_shuffle(rand, bias);
 
-        for dir in dirs.iter() {
+        for dir in dirs {
             // Don’t move outside the maze.
             let Some(next) = dir.move_point_within(head, self.maze.size) else {
                 continue;
@@ -83,7 +92,7 @@ impl<'a> WilsonsMazeBuilder<'a> {
             let next_idx = self.maze.cell_index(next);
 
             if let Some(loop_start) = self.path.iter().position(|&p| p == next) {
-                // We’ve hit a visited cell that is part of our current walk.
+                // We’ve hit a visited cell that is part of our current walk and created a loop.
                 let loop_idx = self.maze.cell_index(self.path[loop_start]);
                 let loop_pos = self.path[loop_start];
                 let tail_pos = self.path[loop_start + 1];
@@ -98,6 +107,8 @@ impl<'a> WilsonsMazeBuilder<'a> {
                         Cell::default()
                     }
                 }
+
+                // Remove the loop from the path so that the current walk continues from the point of intersection.
                 self.path.truncate(loop_start + 1);
 
                 // Finally, restore the wall that was removed to enter the loop so that the current path ends in a dead
@@ -116,7 +127,9 @@ impl<'a> WilsonsMazeBuilder<'a> {
                 self.path.push(next);
                 self.maze.tunnel_between(head, next);
 
-                if self.maze.cells[next_idx].contains(Cell::VISITED) {
+                if self.maze.cells[next_idx].contains(Cell::VISITED)
+                    || (self.seeding && self.path.len() >= self.seed_length)
+                {
                     // We’ve found a cell that is already part of the maze (we know it cannot be part of our current
                     // walk since we checked for that above). Complete this walk and start a new one.
                     let Some(new_head) = self.pop_unvisited() else {
@@ -129,6 +142,11 @@ impl<'a> WilsonsMazeBuilder<'a> {
 
                     self.maze.cells[head_idx].insert(Cell::VISITED);
                     self.path = vec![new_head];
+
+                    if self.seeding {
+                        self.maze.cells[next_idx].insert(Cell::VISITED);
+                        self.seeding = false;
+                    }
                 } else {
                     // Still walking; just mark the cell as visited.
                     self.maze.cells[next_idx].insert(Cell::VISITED);

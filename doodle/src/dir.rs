@@ -37,6 +37,14 @@ bitflags! {
     }
 }
 
+bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct Axes: u8 {
+        const HORIZONTAL = 0b01;
+        const VERTICAL   = 0b10;
+    }
+}
+
 impl Direction {
     pub const ALL: [Self; 4] = [Direction::North, Direction::East, Direction::South, Direction::West];
 
@@ -85,11 +93,11 @@ impl Direction {
         for i in 0..4 {
             if hi < 2 && vi < 2 {
                 if rand.random_bool(bias) {
-                    result[i] = h[hi];
-                    hi += 1;
-                } else {
                     result[i] = v[vi];
                     vi += 1;
+                } else {
+                    result[i] = h[hi];
+                    hi += 1;
                 }
             } else if hi < 2 {
                 result[i] = h[hi];
@@ -226,6 +234,15 @@ impl TryInto<Direction> for Directions {
             Directions::SOUTH => Ok(Direction::South),
             Directions::WEST => Ok(Direction::West),
             _ => Err(()),
+        }
+    }
+}
+
+impl Into<Axes> for Axis {
+    fn into(self) -> Axes {
+        match self {
+            Axis::Horizontal => Axes::HORIZONTAL,
+            Axis::Vertical => Axes::VERTICAL,
         }
     }
 }
