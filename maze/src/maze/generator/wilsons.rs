@@ -158,11 +158,4 @@ impl<'a> WilsonsMazeBuilder<'a> {
 
         None
     }
-
-    pub fn seed(maze: &mut Maze, rand: &mut impl Rng) {
-        // Mark a small loop of cells as visited to create an initial maze. Strictly speaking, Wilson’s algorithm
-        // requires only one cell to be visited to start. However, this is very slow to converge for larger mazes during
-        // early iterations. Instead, we make a small rectangle at a random position based on the maze size. This
-        // creates an small bias in the final maze but improves early convergence time.
-    }
 }
