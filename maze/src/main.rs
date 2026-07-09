@@ -77,6 +77,7 @@ pub struct Args {
     #[clap(flatten)]
     bias: BiasArg,
 }
+
 fn main() -> AnyResult<()> {
     let args = Args::parse();
 
@@ -109,7 +110,8 @@ fn main() -> AnyResult<()> {
 
         let agent_style = args.agent_style.unwrap_or_else(|| AgentRenderStyle::choose(&mut rand));
 
-        // Calculate maze dimensions based on terminal size. Each cell is 2x2 characters, plus a 1-character border.
+        // Calculate maze dimensions based on terminal size. Each cell is 2x2 characters, and the entire maze has a
+        // 1-character border.
         size = (size - UVec2::ONE) / 2;
         let mut maze = Maze::new(size);
 
@@ -126,13 +128,14 @@ fn main() -> AnyResult<()> {
             BiasMode::Uniform(bias_value.clamp(0.0, 1.0))
         } else {
             if rand.random_bool(0.5) {
-                match rand.random_range(0..6) {
+                match rand.random_range(0..7) {
                     0 => BiasMode::Uniform(0.2),
                     1 => BiasMode::Uniform(0.7),
                     2 => BiasMode::Image(Image::random_graphic(size, &mut rand)),
                     3 => BiasMode::Image(Image::default_checkered(size)),
                     4 => BiasMode::Image(Image::random_concentric(size, &mut rand)),
-                    _ => BiasMode::Image(Image::random_gradient(size, &mut rand)),
+                    5 => BiasMode::Image(Image::random_gradient(size, &mut rand)),
+                    _ => BiasMode::Image(Image::new_saltire(size, Image::DEFAULT_LIGHT, Image::DEFAULT_DARK)),
                 }
             } else {
                 BiasMode::Uniform(0.5)

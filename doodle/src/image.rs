@@ -25,6 +25,11 @@ pub struct Image {
     data: Vec<u8>,
 }
 
+pub enum ResizeMode {
+    Stretch,
+    Crop,
+}
+
 const SMILEY: &[u8] = include_bytes!("../../assets/smiley.png");
 const SKULL: &[u8] = include_bytes!("../../assets/skull.png");
 
@@ -114,6 +119,24 @@ impl Image {
         Image { size, data }
     }
 
+    pub fn new_saltire(size: UVec2, light: f64, dark: f64) -> Self {
+        let light = (light.clamp(0.0, 1.0) * 255.0).round() as u8;
+        let dark = (dark.clamp(0.0, 1.0) * 255.0).round() as u8;
+
+        let mut data = vec![0; size.x * size.y];
+        let center = size / 2;
+
+        for pos in size.iter_row_major() {
+            let index = pos.y * size.x + pos.x;
+            let UVec2 { x: dx, y: dy } = pos.abs_diff(center);
+            let dx = dx as f64 / size.x as f64;
+            let dy = dy as f64 / size.y as f64;
+            data[index] = if dx >= dy { light } else { dark };
+        }
+
+        Image { size, data }
+    }
+
     /// Constructs a new image with concentric rings within reasonable random parameters.
     pub fn random_concentric<R: Rng>(size: UVec2, rand: &mut R) -> Self {
         Self::new_concentric(
@@ -128,26 +151,26 @@ impl Image {
     /// Constructs a new image with a smiley face emoji, in the given size.
     ///
     /// This is built from an embedded PNG image, and will be cropped and resized to fit the given size.
-    pub fn new_smiley(size: UVec2) -> Self {
+    pub fn new_smiley(size: UVec2, resize_mode: ResizeMode) -> Self {
         let mut reader = ImageReader::new(Cursor::new(SMILEY));
         reader.set_format(ImageFormat::Png);
-        Self::read(reader, size).unwrap()
+        Self::read(reader, size, resize_mode).unwrap()
     }
 
     /// Constructs a new image with a skull emoji, in the given size.
     ///
     /// This is built from an embedded PNG image, and will be cropped and resized to fit the given size.
-    pub fn new_skull(size: UVec2) -> Self {
+    pub fn new_skull(size: UVec2, resize_mode: ResizeMode) -> Self {
         let mut reader = ImageReader::new(Cursor::new(SKULL));
         reader.set_format(ImageFormat::Png);
-        Self::read(reader, size).unwrap()
+        Self::read(reader, size, resize_mode).unwrap()
     }
 
     /// Constructs a new image with a random graphic.
     pub fn random_graphic<R: Rng>(size: UVec2, rand: &mut R) -> Self {
         let mut img = match rand.random_range(0..2) {
-            0 => Self::new_smiley(size),
-            _ => Self::new_skull(size),
+            0 => Self::new_smiley(size, ResizeMode::Crop),
+            _ => Self::new_skull(size, ResizeMode::Crop),
         };
 
         if rand.random_bool(0.5) {
@@ -195,8 +218,8 @@ impl Image {
     /// Constructs a new image from the given file path, in the given size.
     ///
     /// The image will be cropped and resized to fit the given size, while maintaining its aspect ratio.
-    pub fn from_file(path: &Path, size: UVec2) -> ImageResult<Self> {
-        Self::read(ImageReader::open(path)?, size)
+    pub fn from_file(path: &Path, size: UVec2, resize_mode: ResizeMode) -> ImageResult<Self> {
+        Self::read(ImageReader::open(path)?, size, resize_mode)
     }
 
     /// Returns the width and height of the image in pixels.
@@ -235,12 +258,12 @@ impl Image {
         let path = Path::new(s);
 
         if path.exists() {
-            Image::from_file(path, size)
+            Image::from_file(path, size, ResizeMode::Stretch)
         } else {
             if s == "smiley" {
-                Ok(Self::new_smiley(size))
+                Ok(Self::new_smiley(size, ResizeMode::Crop))
             } else if s == "skull" {
-                Ok(Self::new_skull(size))
+                Ok(Self::new_skull(size, ResizeMode::Crop))
             } else if s.starts_with("checkered")
                 && let Ok(check_size) = s["checkered".len()..].parse::<UVec2>()
             {
@@ -264,36 +287,43 @@ impl Image {
                 Ok(Self::new_gradient(Axis::Horizontal, 0.0, 1.0, size))
             } else if s == "vgrad" {
                 Ok(Self::new_gradient(Axis::Vertical, 0.0, 1.0, size))
+            } else if s == "saltire" {
+                Ok(Self::new_saltire(size, Image::DEFAULT_LIGHT, Image::DEFAULT_DARK))
             } else {
                 return Err(IoError::from(IoErrorKind::NotFound).into());
             }
         }
     }
 
-    fn read<R: BufRead + Seek>(r: ImageReader<R>, size: UVec2) -> ImageResult<Self> {
+    fn read<R: BufRead + Seek>(r: ImageReader<R>, size: UVec2, resize_mode: ResizeMode) -> ImageResult<Self> {
         let mut img = r.decode()?.to_luma8();
         let img_aspect = img.width() as f64 / img.height() as f64;
         let target_aspect = size.x as f64 / size.y as f64;
 
         // Crop to fill the target size while maintaining aspect ratio
-        let crop_size = if img_aspect > target_aspect {
-            uvec2((img.height() as f64 * target_aspect) as usize, img.height() as usize)
-        } else {
-            uvec2(img.width() as usize, (img.width() as f64 / target_aspect) as usize)
+        let img = match resize_mode {
+            ResizeMode::Crop => {
+                let crop_size = if img_aspect > target_aspect {
+                    uvec2((img.height() as f64 * target_aspect) as usize, img.height() as usize)
+                } else {
+                    uvec2(img.width() as usize, (img.width() as f64 / target_aspect) as usize)
+                };
+
+                let crop_origin = uvec2(img.width() as usize - crop_size.x, img.height() as usize - crop_size.y) / 2;
+
+                img = crop(
+                    &mut img,
+                    crop_origin.x as u32,
+                    crop_origin.y as u32,
+                    crop_size.x as u32,
+                    crop_size.y as u32,
+                )
+                .to_image();
+
+                resize(&img, size.x as u32, size.y as u32, FilterType::Lanczos3)
+            }
+            ResizeMode::Stretch => resize(&img, size.x as u32, size.y as u32, FilterType::Lanczos3),
         };
-
-        let crop_origin = uvec2(img.width() as usize - crop_size.x, img.height() as usize - crop_size.y) / 2;
-
-        img = crop(
-            &mut img,
-            crop_origin.x as u32,
-            crop_origin.y as u32,
-            crop_size.x as u32,
-            crop_size.y as u32,
-        )
-        .to_image();
-
-        img = resize(&img, size.x as u32, size.y as u32, FilterType::Lanczos3);
 
         Ok(Image {
             size: uvec2(img.width() as usize, img.height() as usize),
