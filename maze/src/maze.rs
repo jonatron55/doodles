@@ -24,11 +24,9 @@ use doodle::{
     row_major::IterRowMajor,
     vec::{UVec2, uvec2},
 };
-use rand::Rng;
 
 use crate::{
     agent::{Agent, RenderStyle as AgentRenderStyle},
-    maze::generator::{DfsMazeBuilder, PrimsMazeBuilder, WilsonsMazeBuilder},
     trinket::Trinket,
 };
 
@@ -68,14 +66,6 @@ pub enum BiasMode {
 
     /// Bias sampled from an image.
     Image(Image),
-}
-
-/// A maze generation algorithm.
-#[derive(Debug)]
-pub enum MazeBuilder<'a> {
-    Dfs(DfsMazeBuilder<'a>),
-    Prims(PrimsMazeBuilder<'a>),
-    Wilsons(WilsonsMazeBuilder<'a>),
 }
 
 /// Maze rendering style.
@@ -401,25 +391,6 @@ impl RenderStyle {
             outer: self.outer,
             inner: self.inner,
             color,
-        }
-    }
-}
-
-impl MazeBuilder<'_> {
-    /// Build the next step of the maze generation.
-    pub fn build_next(&mut self, rand: &mut impl Rng, bias: &BiasMode) -> bool {
-        match self {
-            MazeBuilder::Dfs(builder) => builder.build_next(rand, bias),
-            MazeBuilder::Prims(builder) => builder.build_next(rand, bias),
-            MazeBuilder::Wilsons(builder) => builder.build_next(rand, bias),
-        }
-    }
-
-    pub fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
-        match self {
-            MazeBuilder::Dfs(builder) => builder.render(style, random_state),
-            MazeBuilder::Prims(builder) => builder.render(style, random_state),
-            MazeBuilder::Wilsons(builder) => builder.render(style, random_state),
         }
     }
 }

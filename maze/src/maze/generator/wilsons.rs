@@ -11,7 +11,7 @@ use rand::{Rng, seq::SliceRandom};
 
 use crate::{
     agent::RenderStyle as AgentRenderStyle,
-    maze::{BiasMode, Cell, Maze, RenderStyle},
+    maze::{BiasMode, Cell, Maze, RenderStyle, generator::MazeBuilder},
 };
 
 /// A maze generator using Wilson’s algorithm (loop-erased random walks).
@@ -23,16 +23,17 @@ use crate::{
 /// Compared to other algorithms, Wilson’s method produces mazes with a uniform distribution of passage lengths and dead
 /// ends. However, it can be very slow to converge for larger mazes.
 #[derive(Debug)]
-pub struct WilsonsMazeBuilder<'a> {
+pub struct WilsonsMazeBuilder<'a, R: Rng> {
     maze: &'a mut Maze,
     open: Vec<UVec2>,
     path: Vec<UVec2>,
     seeding: bool,
     seed_length: usize,
+    rand: &'a mut R,
 }
 
-impl<'a> WilsonsMazeBuilder<'a> {
-    pub fn new(maze: &'a mut Maze, rand: &mut impl Rng) -> Self {
+impl<'a, R: Rng> WilsonsMazeBuilder<'a, R> {
+    pub fn new(maze: &'a mut Maze, rand: &'a mut R) -> Self {
         // Add all cells to the open set and shuffle it.
         let mut open: Vec<_> = (0..maze.size().x)
             .flat_map(|x| (0..maze.size().y).map(move |y| uvec2(x, y)))
@@ -58,12 +59,25 @@ impl<'a> WilsonsMazeBuilder<'a> {
             path: vec![head],
             seeding: true,
             seed_length,
+            rand,
         }
     }
 
-    /// Performs a single step of maze generation. Returns `true` if further calls are needed to complete the maze, or
-    /// `false` if generation is complete.
-    pub fn build_next(&mut self, rand: &mut impl Rng, bias: &BiasMode) -> bool {
+    /// Pop an unvisited cell from the open set.
+    fn pop_unvisited(&mut self) -> Option<UVec2> {
+        while let Some(point) = self.open.pop() {
+            let idx = self.maze.cell_index(point);
+            if !self.maze.cells[idx].contains(Cell::VISITED) {
+                return Some(point);
+            }
+        }
+
+        None
+    }
+}
+
+impl<'a, R: Rng> MazeBuilder for WilsonsMazeBuilder<'a, R> {
+    fn build_next(&mut self, bias: &BiasMode) -> bool {
         let head = *self.path.last().unwrap();
         let from = if self.path.len() >= 2 {
             Some(self.path[self.path.len() - 2])
@@ -74,7 +88,7 @@ impl<'a> WilsonsMazeBuilder<'a> {
         // We’ll try to move randomly in each direction until we find a valid move. Directions are shuffled according to
         // the sampled bias, which may favour horizontal or vertical movement.
         let bias = bias.sample(head);
-        let dirs = Direction::biased_shuffle(rand, bias);
+        let dirs = Direction::biased_shuffle(self.rand, bias);
 
         for dir in dirs {
             // Don’t move outside the maze.
@@ -161,19 +175,7 @@ impl<'a> WilsonsMazeBuilder<'a> {
         unreachable!("No available directions to walk from {head}");
     }
 
-    pub fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
+    fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
         self.maze.render(style, &[], &[], &AgentRenderStyle::default(), random_state)
-    }
-
-    /// Pop an unvisited cell from the open set.
-    fn pop_unvisited(&mut self) -> Option<UVec2> {
-        while let Some(point) = self.open.pop() {
-            let idx = self.maze.cell_index(point);
-            if !self.maze.cells[idx].contains(Cell::VISITED) {
-                return Some(point);
-            }
-        }
-
-        None
     }
 }

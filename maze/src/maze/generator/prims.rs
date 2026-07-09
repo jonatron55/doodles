@@ -12,7 +12,7 @@ use rand::{Rng, RngExt};
 use crate::{
     BiasMode,
     agent::RenderStyle as AgentRenderStyle,
-    maze::{Cell, Maze, RenderStyle},
+    maze::{Cell, Maze, RenderStyle, generator::MazeBuilder},
 };
 
 /// A maze generator using Prim’s algorithm (minimum spanning tree).
@@ -25,11 +25,13 @@ use crate::{
 /// This algorithm tends to produce mazes with many short dead ends and has a more uniform distribution of passage
 /// lengths.
 #[derive(Debug)]
-pub struct PrimsMazeBuilder<'a> {
+pub struct PrimsMazeBuilder<'a, R: Rng> {
     maze: &'a mut Maze,
 
     /// Priority queue of edges connecting visited cells to unvisited neighbors, ordered by weight.
     frontier: BinaryHeap<Edge>,
+
+    rand: &'a mut R,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -39,8 +41,8 @@ struct Edge {
     weight: u32,
 }
 
-impl<'a> PrimsMazeBuilder<'a> {
-    pub fn new(maze: &'a mut Maze, rand: &mut impl Rng, bias: &BiasMode) -> Self {
+impl<'a, R: Rng> PrimsMazeBuilder<'a, R> {
+    pub fn new(maze: &'a mut Maze, rand: &'a mut R, bias: &BiasMode) -> Self {
         let initial = uvec2(rand.random_range(0..maze.size.x), rand.random_range(0..maze.size.y));
 
         let initial_idx = maze.cell_index(initial);
@@ -49,40 +51,15 @@ impl<'a> PrimsMazeBuilder<'a> {
         let mut builder = PrimsMazeBuilder {
             maze,
             frontier: BinaryHeap::new(),
+            rand,
         };
-        builder.push_frontier(initial, rand, bias);
+
+        builder.push_frontier(initial, bias);
         builder
     }
 
-    /// Performs a single step of maze generation. Returns `true` if further calls are needed to complete the maze, or
-    /// `false` if generation is complete.
-    pub fn build_next(&mut self, rand: &mut impl Rng, bias: &BiasMode) -> bool {
-        loop {
-            let Some(Edge { from, to, .. }) = self.frontier.pop() else {
-                return false;
-            };
-
-            let to_idx = self.maze.cell_index(to);
-
-            if !self.maze.cells[to_idx].contains(Cell::VISITED) {
-                self.maze.cells[to_idx].insert(Cell::VISITED);
-                self.maze.tunnel_between(from, to);
-
-                self.maze.invalidate();
-
-                self.push_frontier(to, rand, bias);
-
-                return true;
-            }
-        }
-    }
-
-    pub fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
-        self.maze.render(style, &[], &[], &AgentRenderStyle::default(), random_state)
-    }
-
     /// Enqueues the unvisited neighbors of the given cell into the frontier, with weights based on the specified bias.
-    fn push_frontier(&mut self, cell: UVec2, rand: &mut impl Rng, bias: &BiasMode) {
+    fn push_frontier(&mut self, cell: UVec2, bias: &BiasMode) {
         let bias = bias.sample(cell);
 
         for dir in Direction::ALL {
@@ -99,24 +76,51 @@ impl<'a> PrimsMazeBuilder<'a> {
             // randomly shuffling edges of the same bias category.
             let weight: u32 = match dir.axis() {
                 Axis::Horizontal => {
-                    if rand.random_bool(bias) {
+                    if self.rand.random_bool(bias) {
                         0x0000_0000
                     } else {
                         0x8000_0000
                     }
                 }
                 Axis::Vertical => {
-                    if rand.random_bool(bias) {
+                    if self.rand.random_bool(bias) {
                         0x8000_0000
                     } else {
                         0x0000_0000
                     }
                 }
             };
-            let weight = weight | (rand.random::<u32>() & 0x7FFF_FFFF);
+            let weight = weight | (self.rand.random::<u32>() & 0x7FFF_FFFF);
 
             self.frontier.push(Edge::new(cell, neighbor, weight));
         }
+    }
+}
+
+impl<'a, R: Rng> MazeBuilder for PrimsMazeBuilder<'a, R> {
+    fn build_next(&mut self, bias: &BiasMode) -> bool {
+        loop {
+            let Some(Edge { from, to, .. }) = self.frontier.pop() else {
+                return false;
+            };
+
+            let to_idx = self.maze.cell_index(to);
+
+            if !self.maze.cells[to_idx].contains(Cell::VISITED) {
+                self.maze.cells[to_idx].insert(Cell::VISITED);
+                self.maze.tunnel_between(from, to);
+
+                self.maze.invalidate();
+
+                self.push_frontier(to, bias);
+
+                return true;
+            }
+        }
+    }
+
+    fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
+        self.maze.render(style, &[], &[], &AgentRenderStyle::default(), random_state)
     }
 }
 

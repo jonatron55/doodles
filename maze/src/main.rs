@@ -26,8 +26,8 @@ use crate::{
     agent::{Agent, RenderStyle as AgentRenderStyle},
     args::{BiasArg, MAZE_STYLES, MazeAlgorithm, MazeRenderArg},
     maze::{
-        BiasMode, Maze, MazeBuilder,
-        generator::{DfsMazeBuilder, PrimsMazeBuilder, WilsonsMazeBuilder},
+        BiasMode, Maze,
+        generator::{DfsMazeBuilder, MazeBuilder, PrimsMazeBuilder, WilsonsMazeBuilder},
     },
     trinket::Trinket,
 };
@@ -141,14 +141,14 @@ fn main() -> AnyResult<()> {
 
         let algorithm = args.algorithm.unwrap_or_else(|| MazeAlgorithm::choose(&mut rand));
 
-        let mut builder = match algorithm {
-            MazeAlgorithm::Dfs => MazeBuilder::Dfs(DfsMazeBuilder::new(&mut maze, &mut rand)),
-            MazeAlgorithm::Prims => MazeBuilder::Prims(PrimsMazeBuilder::new(&mut maze, &mut rand, &bias)),
-            MazeAlgorithm::Wilsons => MazeBuilder::Wilsons(WilsonsMazeBuilder::new(&mut maze, &mut rand)),
+        let mut builder: Box<dyn MazeBuilder> = match algorithm {
+            MazeAlgorithm::Dfs => Box::new(DfsMazeBuilder::new(&mut maze, &mut rand)),
+            MazeAlgorithm::Prims => Box::new(PrimsMazeBuilder::new(&mut maze, &mut rand, &bias)),
+            MazeAlgorithm::Wilsons => Box::new(WilsonsMazeBuilder::new(&mut maze, &mut rand)),
         };
 
         'build: loop {
-            if !builder.build_next(&mut rand, &bias) {
+            if !builder.build_next(&bias) {
                 break 'build;
             }
 

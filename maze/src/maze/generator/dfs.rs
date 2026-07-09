@@ -11,7 +11,7 @@ use rand::{Rng, RngExt};
 
 use crate::{
     agent::RenderStyle as AgentRenderStyle,
-    maze::{BiasMode, Cell, Maze, RenderStyle},
+    maze::{BiasMode, Cell, Maze, RenderStyle, generator::MazeBuilder},
 };
 
 /// A maze generator using randomized depth-first search.
@@ -22,9 +22,10 @@ use crate::{
 ///
 /// This algorithm tends to produce mazes with long, winding passages and few short dead ends.
 #[derive(Debug)]
-pub struct DfsMazeBuilder<'a> {
+pub struct DfsMazeBuilder<'a, R: Rng> {
     maze: &'a mut Maze,
     open: Vec<DfsOpenCell>,
+    rand: &'a mut R,
 }
 
 /// A cell that has been encountered during DFS maze generation but not yet visited.
@@ -37,8 +38,8 @@ struct DfsOpenCell {
     from: UVec2,
 }
 
-impl<'a> DfsMazeBuilder<'a> {
-    pub fn new(maze: &'a mut Maze, rand: &mut impl Rng) -> Self {
+impl<'a, R: Rng> DfsMazeBuilder<'a, R> {
+    pub fn new(maze: &'a mut Maze, rand: &'a mut R) -> Self {
         let initial = uvec2(rand.random_range(0..maze.size.x), rand.random_range(0..maze.size.y));
 
         DfsMazeBuilder {
@@ -47,12 +48,27 @@ impl<'a> DfsMazeBuilder<'a> {
                 head: initial,
                 from: initial,
             }],
+            rand,
         }
     }
 
-    /// Performs a single step of maze generation. Returns `true` if further calls are needed to complete the maze, or
-    /// `false` if generation is complete.
-    pub fn build_next(&mut self, rand: &mut impl Rng, bias: &BiasMode) -> bool {
+    /// Pop the next unvisited open cell from the stack, skipping any that have already been visited.
+    ///
+    /// Returns `None` if there are no unvisited open cells remaining (i.e., maze generation is complete).
+    fn pop_unvisited(&mut self) -> Option<DfsOpenCell> {
+        while let Some(open_cell) = self.open.pop() {
+            let p = open_cell.head;
+            let idx = self.maze.cell_index(p);
+            if !self.maze.cells[idx].contains(Cell::VISITED) {
+                return Some(open_cell);
+            }
+        }
+        None
+    }
+}
+
+impl<'a, R: Rng> MazeBuilder for DfsMazeBuilder<'a, R> {
+    fn build_next(&mut self, bias: &BiasMode) -> bool {
         // Get the next unvisited cell.
         let Some(DfsOpenCell { head, from }) = self.pop_unvisited() else {
             // No more open cells; maze generation is complete.
@@ -73,7 +89,7 @@ impl<'a> DfsMazeBuilder<'a> {
         // is inverted because we want to push in reverse order of the input bias so that the most biased directions are
         // at the top of our stack (this could also be achieved by reversing the output, but this is fewer operations).
         let bias = bias.sample(head);
-        let dirs = Direction::biased_shuffle(rand, 1.0 - bias);
+        let dirs = Direction::biased_shuffle(self.rand, 1.0 - bias);
 
         for dir in dirs {
             let Some(next) = dir.move_point_within(head, self.maze.size) else {
@@ -91,21 +107,7 @@ impl<'a> DfsMazeBuilder<'a> {
         true
     }
 
-    pub fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
+    fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
         self.maze.render(style, &[], &[], &AgentRenderStyle::default(), random_state)
-    }
-
-    /// Pop the next unvisited open cell from the stack, skipping any that have already been visited.
-    ///
-    /// Returns `None` if there are no unvisited open cells remaining (i.e., maze generation is complete).
-    fn pop_unvisited(&mut self) -> Option<DfsOpenCell> {
-        while let Some(open_cell) = self.open.pop() {
-            let p = open_cell.head;
-            let idx = self.maze.cell_index(p);
-            if !self.maze.cells[idx].contains(Cell::VISITED) {
-                return Some(open_cell);
-            }
-        }
-        None
     }
 }
