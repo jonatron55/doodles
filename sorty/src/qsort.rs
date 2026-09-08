@@ -78,7 +78,7 @@ pub fn step_qsort(values: &mut [usize], ordering: Ordering, state: &mut QsortSta
         }
     } else {
         // Continue partitioning
-        if values[j].cmp(&pivot) == ordering {
+        if pivot.cmp(&values[j]) == ordering {
             state.stack.push(Substate {
                 low,
                 high,

@@ -13,7 +13,7 @@ use doodle::{
 use rand::{random_bool, seq::SliceRandom};
 
 use crate::{
-    bubble::{BubbleState, step_bubble},
+    bubble::{BubbleState, Direction, step_bubble},
     qsort::{QsortState, step_qsort},
     renderer::RenderStyle,
 };
@@ -120,8 +120,13 @@ fn main() -> IoResult<()> {
             let mut converged = false;
             while !converged {
                 let highlight = match &sort_state {
-                    SortState::Bubble(state) => Some(state.index),
-                    SortState::QSort(state) => state.stack.last().map_or(None, |s| Some(s.j - 1)),
+                    SortState::Bubble(state) => Some(match state.direction {
+                        Direction::LeftToRight => state.index,
+                        Direction::RightToLeft => size.x - state.index,
+                    }),
+                    SortState::QSort(state) => {
+                        state.stack.last().map_or(None, |s| if s.j > 0 { Some(s.j - 1) } else { None })
+                    }
                 };
 
                 converged = renderer::render(&mut displayed, &actual, size, colors, style, ordering, highlight)?;

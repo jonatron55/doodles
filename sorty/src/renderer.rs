@@ -3,7 +3,7 @@
 
 use std::{
     cmp::Ordering,
-    io::{Result as IoResult, Write, stdout},
+    io::{stdout, Result as IoResult, Write},
 };
 
 use bitvec::bitvec;
@@ -30,8 +30,8 @@ pub enum RenderStyle {
 }
 
 const BLOCK_GLYPHS: [&str; 9] = [" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"];
-const DOT_GLYPHS_ASC: [&str; 9] = [" ", "⢀", "⣀", "⣠", "⣤", "⣴", "⣶", "⣾", "⣿"];
-const DOT_GLYPHS_DESC: [&str; 9] = [" ", "⡀", "⣀", "⣄", "⣤", "⣦", "⣶", "⣷", "⣿"];
+const DOT_GLYPHS_ASC: [&str; 9] = [" ", "⡀", "⣀", "⣄", "⣤", "⣦", "⣶", "⣷", "⣿"];
+const DOT_GLYPHS_DESC: [&str; 9] = [" ", "⢀", "⣀", "⣠", "⣤", "⣴", "⣶", "⣾", "⣿"];
 const FRACTION_GLYPHS: [&str; 9] = ["0", "⅛", "¼", "⅜", "½", "⅝", "¾", "⅞", "1"];
 const OCTAL_GLYPHS: [&str; 9] = ["0", "1", "2", "3", "4", "5", "6", "7", "8"];
 
