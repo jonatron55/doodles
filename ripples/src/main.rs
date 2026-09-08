@@ -72,9 +72,17 @@ fn main() -> IoResult<()> {
 
     let mut rand = rand::rng();
     let random_state = RandomState::new();
+    let mut iter = 0;
 
     // Outer loop
     'outer: loop {
+        if let Some(max_iter) = args.common.max_iterations
+            && iter >= max_iter
+        {
+            break 'outer;
+        }
+        iter += 1;
+
         let (width, height) = terminal::size()?;
 
         let base_color = args.color.unwrap_or_else(|| {
