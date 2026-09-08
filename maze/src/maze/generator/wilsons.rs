@@ -1,7 +1,14 @@
 // Copyright (c) 2025 Jonathon Burnham Cobb
 // Licensed under the MIT-0 license.
 
-use std::{hash::RandomState, io::Result as IoResult};
+use std::{
+    collections::HashMap,
+    hash::RandomState,
+    io::Result as IoResult,
+    ops::{Index, RangeBounds, RangeFrom},
+    slice::SliceIndex,
+    vec::Drain,
+};
 
 use doodle::{
     dir::Direction,
@@ -26,10 +33,16 @@ use crate::{
 pub struct WilsonsMazeBuilder<'a, R: Rng> {
     maze: &'a mut Maze,
     open: Vec<UVec2>,
-    path: Vec<UVec2>,
+    path: Path,
     seeding: bool,
     seed_length: usize,
     rand: &'a mut R,
+}
+
+#[derive(Debug)]
+struct Path {
+    points: Vec<UVec2>,
+    indices: HashMap<UVec2, usize>,
 }
 
 impl<'a, R: Rng> WilsonsMazeBuilder<'a, R> {
@@ -53,10 +66,13 @@ impl<'a, R: Rng> WilsonsMazeBuilder<'a, R> {
         let head_idx = maze.cell_index(head);
         maze.cells[head_idx].insert(Cell::VISITED);
 
+        let mut path = Path::new();
+        path.push(head);
+
         WilsonsMazeBuilder {
             maze,
             open,
-            path: vec![head],
+            path,
             seeding: true,
             seed_length,
             rand,
@@ -105,25 +121,18 @@ impl<'a, R: Rng> MazeBuilder for WilsonsMazeBuilder<'a, R> {
 
             let next_idx = self.maze.cell_index(next);
 
-            if let Some(loop_start) = self.path.iter().position(|&p| p == next) {
+            if let Some(loop_start) = self.path.index_of(&next) {
                 // We’ve hit a visited cell that is part of our current walk and created a loop.
                 let loop_idx = self.maze.cell_index(self.path[loop_start]);
                 let loop_pos = self.path[loop_start];
                 let tail_pos = self.path[loop_start + 1];
 
-                // Erase the loop by resetting all cells added to the path after this point.
-                for point in &self.path[loop_start + 1..] {
-                    let idx = self.maze.cell_index(*point);
-                    self.maze.cells[idx] = if *point == self.maze.size() - UVec2::ONE {
-                        // Don’t accidentally close the exit.
-                        Cell::WALL_SOUTH
-                    } else {
-                        Cell::default()
-                    }
+                // Erase the loop by resetting all cells added to the path after this point. The walk will continue
+                // from the point of intersection.
+                for point in self.path.drain(loop_start + 1..) {
+                    let idx = self.maze.cell_index(point);
+                    self.maze.cells[idx] = Cell::default();
                 }
-
-                // Remove the loop from the path so that the current walk continues from the point of intersection.
-                self.path.truncate(loop_start + 1);
 
                 // Finally, restore the wall that was removed to enter the loop so that the current path ends in a dead
                 // end. This only matters if the loop started in the East or South direction since other directions
@@ -134,6 +143,7 @@ impl<'a, R: Rng> MazeBuilder for WilsonsMazeBuilder<'a, R> {
                     self.maze.cells[loop_idx].insert(Cell::WALL_SOUTH);
                 }
 
+                self.maze.ensure_exit();
                 self.maze.invalidate();
                 return true;
             } else {
@@ -155,7 +165,8 @@ impl<'a, R: Rng> MazeBuilder for WilsonsMazeBuilder<'a, R> {
                     let head_idx = self.maze.cell_index(new_head);
 
                     self.maze.cells[head_idx].insert(Cell::VISITED);
-                    self.path = vec![new_head];
+                    self.path.clear();
+                    self.path.push(new_head);
 
                     if self.seeding {
                         self.maze.cells[next_idx].insert(Cell::VISITED);
@@ -177,5 +188,62 @@ impl<'a, R: Rng> MazeBuilder for WilsonsMazeBuilder<'a, R> {
 
     fn render(&self, style: &RenderStyle, random_state: &RandomState) -> IoResult<()> {
         self.maze.render(style, &[], &[], &AgentRenderStyle::default(), random_state)
+    }
+}
+
+impl Path {
+    fn new() -> Self {
+        Path {
+            points: Vec::new(),
+            indices: HashMap::new(),
+        }
+    }
+
+    fn clear(&mut self) {
+        self.points.clear();
+        self.indices.clear();
+    }
+
+    fn len(&self) -> usize {
+        self.points.len()
+    }
+
+    fn index_of(&self, point: &UVec2) -> Option<usize> {
+        self.indices.get(point).copied()
+    }
+
+    fn push(&mut self, point: UVec2) {
+        self.indices.insert(point, self.points.len());
+        self.points.push(point);
+    }
+
+    fn last(&self) -> Option<&UVec2> {
+        self.points.last()
+    }
+
+    fn drain<'a>(
+        &'a mut self,
+        range: impl RangeBounds<usize> + SliceIndex<[UVec2], Output = [UVec2]> + Clone,
+    ) -> Drain<'a, UVec2> {
+        for point in &self.points[range.clone()] {
+            self.indices.remove(point);
+        }
+        self.points.drain(range)
+    }
+}
+
+impl Index<usize> for Path {
+    type Output = UVec2;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.points[index]
+    }
+}
+
+impl Index<RangeFrom<usize>> for Path {
+    type Output = [UVec2];
+
+    fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
+        &self.points[index]
     }
 }

@@ -19,11 +19,12 @@ use crossterm::{
 use doodle::{
     borders::BorderStyle,
     color::Color,
-    dir::Directions,
+    dir::{Axis, Direction, Directions},
     image::Image,
     row_major::IterRowMajor,
     vec::{UVec2, uvec2},
 };
+use rand::{Rng, RngExt};
 
 use crate::{
     agent::{Agent, RenderStyle as AgentRenderStyle},
@@ -47,6 +48,7 @@ use crate::{
 /// Call [`MazeBuilder::build_next`] repeatedly until it returns `false`, indicating that the maze is fully generated.
 #[derive(Clone, Debug)]
 pub struct Maze {
+    /// Width and height of the maze.
     size: UVec2,
 
     /// Cells in row-major order.
@@ -54,6 +56,12 @@ pub struct Maze {
 
     /// Cached bitmap representation for rendering.
     bitmap: RefCell<Option<BitVec>>,
+
+    /// Entrance edge and position.
+    ///
+    /// The entrance will always be on either the north or west edge of the maze. The exit is always one the edge
+    /// and position opposite the entrance.
+    entrance: (Axis, usize),
 }
 
 /// Maze generation bias mode.
@@ -117,15 +125,22 @@ bitflags! {
 
 impl Maze {
     /// Create a new, ungenerated maze of the given size.
-    pub fn new(size: UVec2) -> Self {
-        let mut cells = vec![Cell::default(); size.x * size.y];
-        cells[size.x * size.y - 1].remove(Cell::WALL_EAST); // Exit
+    pub fn new(size: UVec2, rand: &mut impl Rng) -> Self {
+        let cells = vec![Cell::default(); size.x * size.y];
 
-        Maze {
+        let entry_axis = Axis::choose(rand);
+        let entry_pos = rand.random_range(0..size[entry_axis]);
+
+        let mut maze = Maze {
             size,
             cells,
             bitmap: RefCell::new(None),
-        }
+            entrance: (entry_axis, entry_pos),
+        };
+
+        maze.ensure_exit();
+
+        maze
     }
 
     pub fn dead_ends(&mut self) -> impl Iterator<Item = UVec2> + '_ {
@@ -178,6 +193,18 @@ impl Maze {
         let bmp = bmp.as_ref().unwrap();
         let bmp_size = self.bitmap_size();
 
+        let (entry_axis, entry_pos) = self.entrance;
+        let entrance_render_pos = match entry_axis {
+            Axis::Horizontal => uvec2(entry_pos * 2 + 1, 0),
+            Axis::Vertical => uvec2(0, entry_pos * 2 + 1),
+        };
+
+        let exit_render_pos = self.exit() * 2 + UVec2::ONE;
+        let exit_render_pos = match entry_axis {
+            Axis::Horizontal => exit_render_pos + uvec2(0, 1),
+            Axis::Vertical => exit_render_pos + uvec2(1, 0),
+        };
+
         for y in 0..bmp_size.y {
             queue!(stdout, MoveTo(0, y as u16))?;
             for x in 0..bmp_size.x {
@@ -188,6 +215,13 @@ impl Maze {
                     continue;
                 } else if let Some(trinket) = trinkets.iter().find(|t| t.render_position() == uvec2(x, y)) {
                     trinket.render()?;
+                    continue;
+                } else if uvec2(x, y) == entrance_render_pos || uvec2(x, y) == exit_render_pos {
+                    let style = &style.color.complement().dim_style();
+                    match entry_axis {
+                        Axis::Horizontal => queue!(stdout, PrintStyledContent(style.apply('↓')))?,
+                        Axis::Vertical => queue!(stdout, PrintStyledContent(style.apply('→')))?,
+                    }
                     continue;
                 }
 
@@ -359,8 +393,6 @@ impl Maze {
             }
         }
 
-        bitmap.set(bmp_size.x, false); // Entrance
-
         self.bitmap.replace(Some(bitmap));
     }
 
@@ -371,6 +403,48 @@ impl Maze {
 
     pub fn invalidate(&mut self) {
         self.bitmap.replace(None);
+    }
+
+    pub fn ensure_exit(&mut self) {
+        let pos = self.exit();
+        let dir = self.exit_dir();
+        let idx = self.cell_index(pos);
+
+        match dir {
+            Direction::South => self.cells[idx].remove(Cell::WALL_SOUTH),
+            Direction::East => self.cells[idx].remove(Cell::WALL_EAST),
+            _ => {}
+        };
+    }
+
+    pub fn entrance(&self) -> UVec2 {
+        let (axis, pos) = self.entrance;
+        match axis {
+            Axis::Horizontal => uvec2(pos, 0),
+            Axis::Vertical => uvec2(0, pos),
+        }
+    }
+
+    pub fn exit(&self) -> UVec2 {
+        let (axis, pos) = self.entrance;
+        match axis {
+            Axis::Horizontal => uvec2(self.size.x - pos - 1, self.size.y - 1),
+            Axis::Vertical => uvec2(self.size.x - 1, self.size.y - pos - 1),
+        }
+    }
+
+    pub fn entrance_dir(&self) -> Direction {
+        match self.entrance.0 {
+            Axis::Horizontal => Direction::South,
+            Axis::Vertical => Direction::East,
+        }
+    }
+
+    pub fn exit_dir(&self) -> Direction {
+        match self.entrance.0 {
+            Axis::Horizontal => Direction::South,
+            Axis::Vertical => Direction::East,
+        }
     }
 
     /// Gets the total rendered bitmap size in characters.

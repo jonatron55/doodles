@@ -12,7 +12,7 @@ use crossterm::{queue, style::PrintStyledContent};
 use doodle::{
     color::Color,
     dir::{Direction, Directions},
-    vec::{UVec2, uvec2},
+    vec::UVec2,
 };
 use rand::{Rng, RngExt};
 
@@ -99,17 +99,19 @@ struct Junction {
 impl<'a> Agent<'a> {
     /// Create a new agent at the start of the maze.
     pub fn new(maze: &'a Maze, color: Color) -> Self {
+        let entrance = maze.entrance();
+
         Agent {
             maze,
-            position: UVec2::ZERO,
+            position: entrance,
             state: State::Thinking,
             color,
             path: vec![Junction {
-                open: maze.walls(UVec2::ZERO).complement(),
+                open: maze.walls(entrance).complement(),
                 from: None,
             }],
-            closed: HashSet::from([UVec2::ZERO]),
-            dir: Direction::East,
+            closed: HashSet::from([entrance]),
+            dir: maze.entrance_dir(),
         }
     }
 
@@ -218,24 +220,22 @@ impl<'a> Agent<'a> {
     /// If the agent is in the center of a cell, this will be the center of that cell. If the agent is moving between
     /// cells, this will be the position between the two cells in the direction of movement.
     pub fn render_position(&self) -> UVec2 {
-        let UVec2 { x, y } = self.position;
-
         // Each cell occupies a 2x2 character block, and there is a 1-character border around the maze.
-        let x = x * 2 + 1;
-        let y = y * 2 + 1;
+        let pos = self.position * 2 + UVec2::ONE;
 
         match self.state {
             State::Moving(dir) => {
                 // Adjust the rendering position in the direction of movement, which will place it between cells.
-                dir.move_point(uvec2(x, y))
+                dir.move_point(pos)
             }
             State::Exited => {
                 // Move the rendering position just outside the maze exit.
-                uvec2(x + 1, y)
+                let pos = self.maze.exit() * 2 + UVec2::ONE;
+                self.maze.exit_dir().move_point(pos)
             }
             State::Thinking | State::Stuck => {
                 // Agent is stationary in the center of the cell.
-                uvec2(x, y)
+                pos
             }
         }
     }

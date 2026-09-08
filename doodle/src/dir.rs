@@ -213,6 +213,16 @@ impl Directions {
     }
 }
 
+impl Axis {
+    pub fn choose(rand: &mut impl Rng) -> Self {
+        if rand.random_bool(0.5) {
+            Axis::Vertical
+        } else {
+            Axis::Horizontal
+        }
+    }
+}
+
 impl Into<Directions> for Direction {
     fn into(self) -> Directions {
         match self {

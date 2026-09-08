@@ -113,15 +113,15 @@ fn main() -> AnyResult<()> {
         // Calculate maze dimensions based on terminal size. Each cell is 2x2 characters, and the entire maze has a
         // 1-character border.
         size = (size - UVec2::ONE) / 2;
-        let mut maze = Maze::new(size);
+        let mut maze = Maze::new(size, &mut rand);
 
         let bias = if let Some(bias_image_path) = &args.bias.image {
             match Image::from_str(bias_image_path, size) {
                 Ok(image) => BiasMode::Image(image),
-                Err(e) => {
+                Err(err) => {
                     cleanup_term()?;
-                    eprintln!("Failed to load bias image '{}': {e}", bias_image_path);
-                    return Err(e.into());
+                    eprintln!("Failed to load bias image '{}': {err}", bias_image_path);
+                    return Err(err.into());
                 }
             }
         } else if let Some(bias_value) = args.bias.bias {

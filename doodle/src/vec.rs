@@ -4,11 +4,13 @@
 use std::{
     fmt::{Binary, Display, Formatter, LowerHex, Octal, Result as FmtResult, UpperHex},
     ops::{
-        Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div, DivAssign, Mul, MulAssign,
-        Not, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
+        Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div, DivAssign, Index, Mul,
+        MulAssign, Not, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
     },
     str::FromStr,
 };
+
+use crate::dir::Axis;
 
 /// A 2D vector with unsigned integer components.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -384,5 +386,28 @@ impl FromStr for UVec2 {
             }
         }
         Err(())
+    }
+}
+
+impl Index<usize> for UVec2 {
+    type Output = usize;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        match index {
+            0 => &self.x,
+            1 => &self.y,
+            _ => panic!("Vector index out of range"),
+        }
+    }
+}
+
+impl Index<Axis> for UVec2 {
+    type Output = usize;
+
+    fn index(&self, index: Axis) -> &Self::Output {
+        match index {
+            Axis::Horizontal => &self.x,
+            Axis::Vertical => &self.y,
+        }
     }
 }
