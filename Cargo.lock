@@ -327,7 +327,7 @@ dependencies = [
 
 [[package]]
 name = "conway"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "clap",
  "crossterm",
@@ -447,7 +447,7 @@ dependencies = [
 
 [[package]]
 name = "digirain"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -480,7 +480,7 @@ dependencies = [
 
 [[package]]
 name = "doodle"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "bitflags",
  "clap",
@@ -807,7 +807,7 @@ dependencies = [
 
 [[package]]
 name = "maze"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "bitflags",
@@ -1300,7 +1300,7 @@ checksum = "47b34b781b31e5d73e9fbc8689c70551fd1ade9a19e3e28cfec8580a79290cc4"
 
 [[package]]
 name = "ripples"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "clap",
  "crossterm",
@@ -1438,7 +1438,7 @@ checksum = "b9be42f50aa861c555654aa3a37f52f4b1074bacf4e48fe0ef7fa584e80f1f0f"
 
 [[package]]
 name = "sorty"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "bitvec",
  "clap",
