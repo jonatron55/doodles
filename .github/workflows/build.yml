@@ -1,0 +1,81 @@
+name: Build CLI
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        description: Rust target triple to build.
+        type: string
+        required: true
+      os:
+        description: Runner label; must be native to the target so the smoke test can run.
+        type: string
+        required: true
+      package:
+        description: Produce a release archive and upload it as an artifact with this name (empty string disables packaging).
+        type: string
+        default: ""
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ${{ inputs.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          lfs: true
+
+      - name: Add target
+        run: rustup target add ${{ inputs.target }}
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ${{ inputs.target }}
+
+      - name: Build
+        run: cargo build --release --locked --target=${{ inputs.target }}
+
+      - name: Package (Windows)
+        if: inputs.package != '' && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $name = "doodles-$env:GITHUB_REF_NAME-${{ inputs.package }}"
+          New-Item -ItemType Directory -Path "staging\$name" -Force | Out-Null
+          Copy-Item "target\${{ inputs.target }}\release\conway.exe" "staging\$name\"
+          Copy-Item "target\${{ inputs.target }}\release\digirain.exe" "staging\$name\"
+          Copy-Item "target\${{ inputs.target }}\release\doodle.exe" "staging\$name\"
+          Copy-Item "target\${{ inputs.target }}\release\maze.exe" "staging\$name\"
+          Copy-Item "target\${{ inputs.target }}\release\ripples.exe" "staging\$name\"
+          Copy-Item "target\${{ inputs.target }}\release\sorty.exe" "staging\$name\"
+          Copy-Item "docs" "staging\$name\docs" -Recurse
+          Copy-Item Readme.md, License.txt "staging\$name\"
+          Compress-Archive -Path "staging\$name" -DestinationPath "$name.zip"
+
+      - name: Package (Unix)
+        if: inputs.package != '' && runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          name="doodles-${GITHUB_REF_NAME}-${{ inputs.package }}"
+          mkdir -p "staging/$name"
+          cp "target/${{ inputs.target }}/release/conway" "staging/$name/"
+          cp "target/${{ inputs.target }}/release/digirain" "staging/$name/"
+          cp "target/${{ inputs.target }}/release/doodle" "staging/$name/"
+          cp "target/${{ inputs.target }}/release/maze" "staging/$name/"
+          cp "target/${{ inputs.target }}/release/ripples" "staging/$name/"
+          cp "target/${{ inputs.target }}/release/sorty" "staging/$name/"
+          cp -r docs "staging/$name/docs"
+          cp Readme.md License.txt "staging/$name/"
+          tar -czf "$name.tar.gz" -C staging "$name"
+
+      - uses: actions/upload-artifact@v7
+        if: inputs.package != ''
+        with:
+          name: doodles-${{ inputs.package }}
+          path: |
+            *.tar.gz
+            *.zip
+          if-no-files-found: error
